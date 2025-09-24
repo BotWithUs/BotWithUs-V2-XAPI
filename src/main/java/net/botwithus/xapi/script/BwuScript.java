@@ -26,9 +26,12 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
+import java.lang.reflect.Type;
 
 
 public abstract class BwuScript extends PermissiveScript {
+
+    private static final Gson gson = new GsonBuilder().setPrettyPrinting().create();
     private BwuGraphicsContext graphicsContext = null;
     public Stopwatch STOPWATCH;
 
@@ -63,14 +66,13 @@ public abstract class BwuScript extends PermissiveScript {
 
     public void performSavePersistentData() {
         try {
-            JsonObject obj = new JsonObject();
-            savePersistentData(obj);
-
-            Path path = Paths.get(System.getProperty("user.home"), ".botwithus", "configs", getName() + "_settings.json");
-            Files.createDirectories(path.getParent());
-
-            try (Writer writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
-                new GsonBuilder().setPrettyPrinting().create().toJson(obj, writer);
+            Object obj = getPersistentData();
+            if (obj != null) {
+                Path path = Paths.get(System.getProperty("user.home"), ".botwithus", "configs", getName() + "_settings.json");
+                Files.createDirectories(path.getParent());
+                try (Writer writer = Files.newBufferedWriter(path, StandardCharsets.UTF_8)) {
+                    gson.toJson(getPersistentData(), writer);
+                }
             }
         } catch (Exception e) {
             println("Failed to save persistent data");
@@ -80,12 +82,13 @@ public abstract class BwuScript extends PermissiveScript {
 
     public void performLoadPersistentData() {
         try {
+            if (getPersistentData() == null) return;
             Path path = Paths.get(System.getProperty("user.home"), ".botwithus", "configs", getName() + "_settings.json");
             if (Files.exists(path)) {
                 try (Reader reader = Files.newBufferedReader(path, StandardCharsets.UTF_8)) {
-                    JsonObject obj = new Gson().fromJson(reader, JsonObject.class);
-                    if (obj != null) {
-                        loadPersistentData(obj);
+                    Object loaded = gson.fromJson(reader, Object.class);
+                    if (loaded != null) {
+                        setPersistentData(loaded);
                     }
                 }
             }
@@ -96,8 +99,8 @@ public abstract class BwuScript extends PermissiveScript {
     }
 
     public abstract BuildableUI getBuildableUI();
-    public abstract void savePersistentData(JsonObject obj);
-    public abstract void loadPersistentData(JsonObject obj);
+    public abstract Object getPersistentData();
+    public abstract void setPersistentData(Object data);
 
     @Override
     public boolean onPreTick() {
@@ -119,6 +122,11 @@ public abstract class BwuScript extends PermissiveScript {
     public void onDeactivation() {
         super.onDeactivation();
         STOPWATCH.pause();
+        try {
+            performSavePersistentData();
+        } catch (Exception e) {
+            println("Failed to save persistent data");
+        }
     }
 
     @EventInfo(type = InventoryEvent.class)
