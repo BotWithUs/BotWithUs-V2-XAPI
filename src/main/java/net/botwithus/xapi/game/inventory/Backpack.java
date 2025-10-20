@@ -3,6 +3,10 @@ package net.botwithus.xapi.game.inventory;
 import net.botwithus.rs3.inventories.Inventory;
 import net.botwithus.rs3.inventories.InventoryManager;
 import net.botwithus.rs3.item.InventoryItem;
+import net.botwithus.rs3.interfaces.Component;
+import net.botwithus.rs3.interfaces.Interfaces;
+import net.botwithus.rs3.minimenu.Action;
+import net.botwithus.rs3.minimenu.MiniMenu;
 
 import java.util.Arrays;
 import java.util.List;
@@ -149,5 +153,88 @@ public class Backpack {
     public static InventoryItem getItem(int... ids) {
         Inventory backpack = getInventory();
         return backpack.getItems().stream().filter(item -> Arrays.stream(ids).anyMatch(i -> i == item.getId())).findFirst().orElse(null);
+    }
+
+    /**
+     * Retrieves all items in the backpack that have the specified option.
+     *
+     * @param option the option to check for (e.g., "Eat", "Drink", "Use")
+     * @return a list of items that have the specified option
+     */
+    public static List<InventoryItem> getItemsWithOption(String option) {
+        return getInventory().getItems().stream()
+                .filter(item -> item.getId() != -1 && !item.getName().isEmpty())
+                .filter(item -> item.getOptions() != null && item.getOptions().contains(option))
+                .toList();
+    }
+
+    /**
+     * Interacts with an item in the backpack using the specified option.
+     *
+     * @param itemName the name of the item to interact with
+     * @param option the option to use (e.g., "Eat", "Drink", "Use")
+     * @return true if the interaction was successful, false otherwise
+     */
+    public static boolean interact(String itemName, String option) {
+        InventoryItem item = getItem(itemName);
+        return item != null && item.interact(option) > 0;
+    }
+
+    /**
+     * Interacts with an item in the backpack by ID using the specified option.
+     *
+     * @param itemId the ID of the item to interact with
+     * @param option the option to use (e.g., "Eat", "Drink", "Use")
+     * @return true if the interaction was successful, false otherwise
+     */
+    public static boolean interact(int itemId, String option) {
+        InventoryItem item = getItem(itemId);
+        return item != null && item.interact(option) > 0;
+    }
+
+    /**
+     * Drags a component from one location to another using the v2 MiniMenu system.
+     * This is the v2 equivalent of the v1 Interfaces.dragComponents method.
+     *
+     * @param fromComponent the source component to drag from
+     * @param toComponent the destination component to drag to
+     * @return true if the drag operation was successful, false otherwise
+     */
+    public static boolean dragComponent(Component fromComponent, Component toComponent) {
+        if (fromComponent == null || toComponent == null) {
+            return false;
+        }
+
+        try {
+            // First, set the target to the source component
+            int fromInterfaceId = fromComponent.getRoot().getInterfaceId();
+            int fromComponentId = fromComponent.getComponentId();
+            int fromSubComponentId = fromComponent.getSubComponentId();
+
+            // Initiate drag from source component
+            int dragResult = MiniMenu.doAction(Action.COMPONENT_DRAG,
+                fromSubComponentId,
+                fromComponentId,
+                fromInterfaceId);
+
+            if (dragResult <= 0) {
+                return false;
+            }
+
+            // Complete drag to destination component
+            int toInterfaceId = toComponent.getRoot().getInterfaceId();
+            int toComponentId = toComponent.getComponentId();
+            int toSubComponentId = toComponent.getSubComponentId();
+
+            int dropResult = MiniMenu.doAction(Action.COMPONENT,
+                toSubComponentId,
+                toComponentId,
+                toInterfaceId);
+
+            return dropResult > 0;
+
+        } catch (Exception e) {
+            return false;
+        }
     }
 }

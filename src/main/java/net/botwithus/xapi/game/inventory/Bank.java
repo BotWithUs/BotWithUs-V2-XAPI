@@ -464,7 +464,7 @@ public class Bank {
             MiniMenu.doAction(Action.COMPONENT, 1, 100, 33882231);
             script.delay(Rand.nextInt(1, 2));
         }
-        var result = MiniMenu.doAction(Action.COMPONENT, 1, presetNumber % 9,33882231) > 0;
+        var result = MiniMenu.doAction(Action.COMPONENT, 1, ((presetNumber - 1) % 9) + 1,33882231) > 0;
         if (result) {
             previousLoadedPreset = presetNumber;
         }
