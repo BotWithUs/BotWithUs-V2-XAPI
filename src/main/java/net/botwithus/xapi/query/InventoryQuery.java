@@ -1,5 +1,6 @@
 package net.botwithus.xapi.query;
 
+import com.botwithus.bot.api.GameAPI;
 import com.botwithus.bot.api.model.InventoryInfo;
 import net.botwithus.xapi.XApi;
 import net.botwithus.xapi.query.base.Query;
@@ -13,16 +14,22 @@ import java.util.function.Predicate;
 
 public class InventoryQuery implements Query<InventoryInfo, ResultSet<InventoryInfo>> {
 
+    private final GameAPI api;
     private final int[] ids;
     private Predicate<InventoryInfo> filter;
 
-    public InventoryQuery(int... ids) {
+    public InventoryQuery(GameAPI api, int... ids) {
+        this.api = api;
         this.ids = ids;
         this.filter = info -> ids.length == 0 || contains(ids, info.inventoryId());
     }
 
     public static InventoryQuery newQuery(int... ids) {
-        return new InventoryQuery(ids);
+        return new InventoryQuery(XApi.api(), ids);
+    }
+
+    public static InventoryQuery newQuery(GameAPI api, int... ids) {
+        return new InventoryQuery(api, ids);
     }
 
     public InventoryQuery isFull(boolean full) {
@@ -42,7 +49,7 @@ public class InventoryQuery implements Query<InventoryInfo, ResultSet<InventoryI
     public InventoryQuery contains(int... itemIds) {
         filter = filter.and(info -> {
             for (int itemId : itemIds) {
-                if (!XApi.api().queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
+                if (!api.queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
                         .inventoryId(info.inventoryId())
                         .itemId(itemId)
                         .nonEmpty(true)
@@ -59,7 +66,7 @@ public class InventoryQuery implements Query<InventoryInfo, ResultSet<InventoryI
     public InventoryQuery containsAll(int... itemIds) {
         filter = filter.and(info -> {
             for (int itemId : itemIds) {
-                if (XApi.api().queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
+                if (api.queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
                         .inventoryId(info.inventoryId())
                         .itemId(itemId)
                         .nonEmpty(true)
@@ -74,11 +81,11 @@ public class InventoryQuery implements Query<InventoryInfo, ResultSet<InventoryI
     }
 
     public InventoryQuery contains(BiFunction<String, CharSequence, Boolean> matcher, String... names) {
-        filter = filter.and(info -> XApi.api().queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
+        filter = filter.and(info -> api.queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
                         .inventoryId(info.inventoryId())
                         .nonEmpty(true)
                         .build()).stream()
-                .map(item -> XApi.api().getItemType(item.itemId()).name())
+                .map(item -> api.getItemType(item.itemId()).name())
                 .anyMatch(name -> {
                     for (String candidate : names) {
                         if (candidate != null && Boolean.TRUE.equals(matcher.apply(name, candidate))) {
@@ -95,22 +102,22 @@ public class InventoryQuery implements Query<InventoryInfo, ResultSet<InventoryI
     }
 
     public InventoryQuery containsCategory(int... categories) {
-        filter = filter.and(info -> XApi.api().queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
+        filter = filter.and(info -> api.queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
                         .inventoryId(info.inventoryId())
                         .nonEmpty(true)
                         .build()).stream()
-                .map(item -> XApi.api().getItemType(item.itemId()).category())
+                .map(item -> api.getItemType(item.itemId()).category())
                 .anyMatch(category -> contains(categories, category)));
         return this;
     }
 
     public InventoryQuery containsAllCategory(int... categories) {
         filter = filter.and(info -> {
-            List<Integer> present = XApi.api().queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
+            List<Integer> present = api.queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
                             .inventoryId(info.inventoryId())
                             .nonEmpty(true)
                             .build()).stream()
-                    .map(item -> XApi.api().getItemType(item.itemId()).category())
+                    .map(item -> api.getItemType(item.itemId()).category())
                     .toList();
             for (int category : categories) {
                 if (!present.contains(category)) {
@@ -124,7 +131,7 @@ public class InventoryQuery implements Query<InventoryInfo, ResultSet<InventoryI
 
     @Override
     public ResultSet<InventoryInfo> results() {
-        List<InventoryInfo> results = new ArrayList<>(XApi.api().queryInventories());
+        List<InventoryInfo> results = new ArrayList<>(api.queryInventories());
         results.removeIf(filter.negate());
         return new ResultSet<>(results);
     }

@@ -1,5 +1,6 @@
 package net.botwithus.xapi.query;
 
+import com.botwithus.bot.api.GameAPI;
 import com.botwithus.bot.api.entities.GroundItems;
 import net.botwithus.xapi.XApi;
 import net.botwithus.xapi.query.base.Query;
@@ -14,10 +15,19 @@ import java.util.regex.Pattern;
 
 public class GroundItemQuery implements Query<GroundItems.Entry, ResultSet<GroundItems.Entry>> {
 
+    private final GameAPI api;
     private Predicate<GroundItems.Entry> filter = item -> true;
 
+    private GroundItemQuery(GameAPI api) {
+        this.api = api;
+    }
+
     public static GroundItemQuery newQuery() {
-        return new GroundItemQuery();
+        return new GroundItemQuery(XApi.api());
+    }
+
+    public static GroundItemQuery newQuery(GameAPI api) {
+        return new GroundItemQuery(api);
     }
 
     public GroundItemQuery id(int... ids) {
@@ -35,7 +45,7 @@ public class GroundItemQuery implements Query<GroundItems.Entry, ResultSet<Groun
     }
 
     public GroundItemQuery category(int... categories) {
-        filter = filter.and(item -> matchesAny(XApi.api().getItemType(item.itemId()).category(), categories));
+        filter = filter.and(item -> matchesAny(api.getItemType(item.itemId()).category(), categories));
         return this;
     }
 
@@ -80,7 +90,7 @@ public class GroundItemQuery implements Query<GroundItems.Entry, ResultSet<Groun
 
     @Override
     public ResultSet<GroundItems.Entry> results() {
-        List<GroundItems.Entry> results = new ArrayList<>(new GroundItems(XApi.api()).query().all());
+        List<GroundItems.Entry> results = new ArrayList<>(new GroundItems(api).query().all());
         results.removeIf(filter.negate());
         results.sort((a, b) -> Integer.compare(a.distanceToPlayer(), b.distanceToPlayer()));
         return new ResultSet<>(results);

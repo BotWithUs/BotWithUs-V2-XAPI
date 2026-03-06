@@ -1,5 +1,6 @@
 package net.botwithus.xapi.game.traversal.enums;
 
+import com.botwithus.bot.api.GameAPI;
 import com.botwithus.bot.api.inventory.ActionTypes;
 import com.botwithus.bot.api.model.GameAction;
 import net.botwithus.xapi.XApi;
@@ -27,11 +28,15 @@ public enum MagicCarpetType {
         return interfaceIndex << 16 | componentIndex;
     }
 
-    public boolean teleport() {
-        if (!MagicCarpetNetwork.isOpen() && !MagicCarpetNetwork.open()) {
+    public boolean teleport(GameAPI api) {
+        if (!MagicCarpetNetwork.isOpen(api) && !MagicCarpetNetwork.open(api)) {
             return false;
         }
-        XApi.api().queueAction(new GameAction(ActionTypes.COMPONENT, 1, -1, getId()));
+        api.queueAction(new GameAction(ActionTypes.COMPONENT, 1, -1, getId()));
         return true;
+    }
+
+    public boolean teleport() {
+        return teleport(XApi.api());
     }
 }

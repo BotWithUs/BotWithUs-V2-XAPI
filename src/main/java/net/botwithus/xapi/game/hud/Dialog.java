@@ -1,5 +1,6 @@
 package net.botwithus.xapi.game.hud;
 
+import com.botwithus.bot.api.GameAPI;
 import com.botwithus.bot.api.inventory.ActionTypes;
 import com.botwithus.bot.api.model.Component;
 import com.botwithus.bot.api.model.GameAction;
@@ -18,30 +19,38 @@ public final class Dialog {
     private Dialog() {
     }
 
-    public static boolean isOpen() {
+    public static boolean isOpen(GameAPI api) {
         for (int interfaceId : DIALOG_INTERFACES) {
-            if (XApi.api().isInterfaceOpen(interfaceId)) {
+            if (api.isInterfaceOpen(interfaceId)) {
                 return true;
             }
         }
         return false;
     }
 
-    public static boolean select() {
-        if (!isOpen()) {
+    public static boolean isOpen() {
+        return isOpen(XApi.api());
+    }
+
+    public static boolean select(GameAPI api) {
+        if (!isOpen(api)) {
             return false;
         }
-        XApi.api().queueAction(new GameAction(ActionTypes.DIALOGUE, 0, -1, resolveDefaultHash()));
+        api.queueAction(new GameAction(ActionTypes.DIALOGUE, 0, -1, resolveDefaultHash(api)));
         return true;
     }
 
-    public static List<String> getOptions() {
-        if (!XApi.api().isInterfaceOpen(1188)) {
+    public static boolean select() {
+        return select(XApi.api());
+    }
+
+    public static List<String> getOptions(GameAPI api) {
+        if (!api.isInterfaceOpen(1188)) {
             return Collections.emptyList();
         }
         List<String> options = new ArrayList<>();
-        for (Component component : ComponentQuery.newQuery(1188).id(6, 33, 35, 37, 39).results()) {
-            String text = XApi.api().getComponentText(component.interfaceId(), component.componentId());
+        for (Component component : ComponentQuery.newQuery(api, 1188).id(6, 33, 35, 37, 39).results()) {
+            String text = api.getComponentText(component.interfaceId(), component.componentId());
             if (text != null && !text.isBlank()) {
                 options.add(text);
             }
@@ -49,62 +58,82 @@ public final class Dialog {
         return options;
     }
 
+    public static List<String> getOptions() {
+        return getOptions(XApi.api());
+    }
+
     public static boolean hasOption(String string) {
         return getOptions().stream().anyMatch(option -> option.contentEquals(string));
     }
 
-    public static boolean interact(String optionText) {
-        List<String> options = getOptions();
+    public static boolean interact(GameAPI api, String optionText) {
+        List<String> options = getOptions(api);
         for (int i = 0; i < options.size(); i++) {
             if (options.get(i).contains(optionText)) {
-                return interact(i);
+                return interact(api, i);
             }
         }
         return false;
     }
 
+    public static boolean interact(String optionText) {
+        return interact(XApi.api(), optionText);
+    }
+
     public static boolean interact(int index) {
-        if (!XApi.api().isInterfaceOpen(1188) || index < 0 || index >= OPTION_HASHES.length) {
+        return interact(XApi.api(), index);
+    }
+
+    public static boolean interact(GameAPI api, int index) {
+        if (!api.isInterfaceOpen(1188) || index < 0 || index >= OPTION_HASHES.length) {
             return false;
         }
-        XApi.api().queueAction(new GameAction(ActionTypes.DIALOGUE, 0, -1, OPTION_HASHES[index]));
+        api.queueAction(new GameAction(ActionTypes.DIALOGUE, 0, -1, OPTION_HASHES[index]));
         return true;
     }
 
     public static String getText() {
-        if (XApi.api().isInterfaceOpen(1184)) {
-            return text(1184, 10);
+        return getText(XApi.api());
+    }
+
+    public static String getText(GameAPI api) {
+        if (api.isInterfaceOpen(1184)) {
+            return text(api, 1184, 10);
         }
-        if (XApi.api().isInterfaceOpen(1189)) {
-            return text(1189, 3);
+        if (api.isInterfaceOpen(1189)) {
+            return text(api, 1189, 3);
         }
-        if (XApi.api().isInterfaceOpen(1186)) {
-            return text(1186, 3);
+        if (api.isInterfaceOpen(1186)) {
+            return text(api, 1186, 3);
         }
         return null;
     }
 
     public static String getTitle() {
+        return getTitle(XApi.api());
+    }
+
+    public static String getTitle(GameAPI api) {
         for (int interfaceId : DIALOG_INTERFACES) {
-            if (XApi.api().isInterfaceOpen(interfaceId)) {
-                Component component = ComponentQuery.newQuery(interfaceId).results().first();
+            if (api.isInterfaceOpen(interfaceId)) {
+                Component component = ComponentQuery.newQuery(api, interfaceId).results().first();
                 if (component != null) {
-                    return text(component.interfaceId(), component.componentId());
+                    return text(api, component.interfaceId(), component.componentId());
                 }
             }
         }
         return null;
     }
 
-    private static String text(int interfaceId, int componentId) {
-        return XApi.api().getComponentText(interfaceId, componentId);
+    private static String text(GameAPI api, int interfaceId, int componentId) {
+        return api.getComponentText(interfaceId, componentId);
     }
 
-    private static int resolveDefaultHash() {
-        if (XApi.api().isInterfaceOpen(1184)) return 77594639;
-        if (XApi.api().isInterfaceOpen(1186)) return 77725700;
-        if (XApi.api().isInterfaceOpen(1189)) return 77922323;
-        if (XApi.api().isInterfaceOpen(1191)) return 78053391;
+    private static int resolveDefaultHash(GameAPI api) {
+        if (api.isInterfaceOpen(1184)) return 77594639;
+        if (api.isInterfaceOpen(1186)) return 77725700;
+        if (api.isInterfaceOpen(1189)) return 77922323;
+        if (api.isInterfaceOpen(1191)) return 78053391;
         return 0;
     }
 }
