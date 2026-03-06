@@ -1,5 +1,6 @@
 package net.botwithus.xapi.query;
 
+import com.botwithus.bot.api.GameAPI;
 import com.botwithus.bot.api.model.InventoryItem;
 import net.botwithus.xapi.XApi;
 import net.botwithus.xapi.query.base.Query;
@@ -14,15 +15,21 @@ import java.util.regex.Pattern;
 
 public class InventoryItemQuery implements Query<InventoryItem, ResultSet<InventoryItem>> {
 
+    private final GameAPI api;
     private final int[] inventoryIds;
     private Predicate<InventoryItem> filter = item -> true;
 
-    public InventoryItemQuery(int... inventoryIds) {
+    public InventoryItemQuery(GameAPI api, int... inventoryIds) {
+        this.api = api;
         this.inventoryIds = inventoryIds;
     }
 
     public static InventoryItemQuery newQuery(int... inventoryIds) {
-        return new InventoryItemQuery(inventoryIds);
+        return new InventoryItemQuery(XApi.api(), inventoryIds);
+    }
+
+    public static InventoryItemQuery newQuery(GameAPI api, int... inventoryIds) {
+        return new InventoryItemQuery(api, inventoryIds);
     }
 
     public InventoryItemQuery id(int... ids) {
@@ -51,7 +58,7 @@ public class InventoryItemQuery implements Query<InventoryItem, ResultSet<Invent
 
     public InventoryItemQuery name(BiFunction<String, CharSequence, Boolean> matcher, String... names) {
         filter = filter.and(item -> {
-            String name = item.itemId() > -1 ? XApi.api().getItemType(item.itemId()).name() : null;
+            String name = item.itemId() > -1 ? api.getItemType(item.itemId()).name() : null;
             if (name == null) {
                 return false;
             }
@@ -71,7 +78,7 @@ public class InventoryItemQuery implements Query<InventoryItem, ResultSet<Invent
 
     public InventoryItemQuery name(Pattern... patterns) {
         filter = filter.and(item -> {
-            String name = item.itemId() > -1 ? XApi.api().getItemType(item.itemId()).name() : null;
+            String name = item.itemId() > -1 ? api.getItemType(item.itemId()).name() : null;
             if (name == null) {
                 return false;
             }
@@ -89,7 +96,7 @@ public class InventoryItemQuery implements Query<InventoryItem, ResultSet<Invent
     public ResultSet<InventoryItem> results() {
         List<InventoryItem> items = new ArrayList<>();
         for (int inventoryId : inventoryIds) {
-            items.addAll(XApi.api().queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
+            items.addAll(api.queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
                     .inventoryId(inventoryId)
                     .nonEmpty(false)
                     .build()));

@@ -90,6 +90,10 @@ public abstract class BwuScript extends PermissiveScript {
         return context().getGameAPI();
     }
 
+    protected GameAPI gameApi(String clientName) {
+        return net.botwithus.xapi.XApi.api(clientName);
+    }
+
     protected ScriptContext scriptContext() {
         return context();
     }

@@ -1,5 +1,6 @@
 package net.botwithus.xapi.query;
 
+import com.botwithus.bot.api.GameAPI;
 import com.botwithus.bot.api.entities.SceneObject;
 import com.botwithus.bot.api.entities.SceneObjects;
 import net.botwithus.xapi.XApi;
@@ -15,10 +16,19 @@ import java.util.regex.Pattern;
 
 public class SceneObjectQuery implements Query<SceneObject, EntityResultSet<SceneObject>> {
 
+    private final GameAPI api;
     private Predicate<SceneObject> filter = object -> true;
 
+    private SceneObjectQuery(GameAPI api) {
+        this.api = api;
+    }
+
     public static SceneObjectQuery newQuery() {
-        return new SceneObjectQuery();
+        return new SceneObjectQuery(XApi.api());
+    }
+
+    public static SceneObjectQuery newQuery(GameAPI api) {
+        return new SceneObjectQuery(api);
     }
 
     public SceneObjectQuery typeId(int... typeIds) {
@@ -80,7 +90,7 @@ public class SceneObjectQuery implements Query<SceneObject, EntityResultSet<Scen
 
     @Override
     public EntityResultSet<SceneObject> results() {
-        List<SceneObject> results = new ArrayList<>(new SceneObjects(XApi.api()).query().all());
+        List<SceneObject> results = new ArrayList<>(new SceneObjects(api).query().all());
         results.removeIf(filter.negate());
         results.sort((a, b) -> Integer.compare(a.distanceToPlayer(), b.distanceToPlayer()));
         return new EntityResultSet<>(results);

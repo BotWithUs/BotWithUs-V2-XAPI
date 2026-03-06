@@ -1,6 +1,7 @@
 package net.botwithus.xapi.script.base;
 
 import com.botwithus.bot.api.BotScript;
+import com.botwithus.bot.api.GameAPI;
 import com.botwithus.bot.api.ScriptContext;
 import net.botwithus.xapi.XApi;
 
@@ -108,6 +109,14 @@ public abstract class DelayableScript implements BotScript {
 
     protected ScriptContext context() {
         return context;
+    }
+
+    protected GameAPI gameApi() {
+        return context.getGameAPI();
+    }
+
+    protected GameAPI gameApi(String clientName) {
+        return XApi.api(clientName);
     }
 
     protected void onInitialize() {

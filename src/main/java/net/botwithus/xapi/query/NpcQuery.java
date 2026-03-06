@@ -1,5 +1,6 @@
 package net.botwithus.xapi.query;
 
+import com.botwithus.bot.api.GameAPI;
 import com.botwithus.bot.api.entities.Npc;
 import com.botwithus.bot.api.entities.Npcs;
 import net.botwithus.xapi.XApi;
@@ -15,10 +16,19 @@ import java.util.regex.Pattern;
 
 public class NpcQuery implements Query<Npc, EntityResultSet<Npc>> {
 
+    private final GameAPI api;
     private Predicate<Npc> filter = npc -> true;
 
+    private NpcQuery(GameAPI api) {
+        this.api = api;
+    }
+
     public static NpcQuery newQuery() {
-        return new NpcQuery();
+        return new NpcQuery(XApi.api());
+    }
+
+    public static NpcQuery newQuery(GameAPI api) {
+        return new NpcQuery(api);
     }
 
     public NpcQuery index(int... indices) {
@@ -99,7 +109,7 @@ public class NpcQuery implements Query<Npc, EntityResultSet<Npc>> {
 
     @Override
     public EntityResultSet<Npc> results() {
-        List<Npc> results = new ArrayList<>(new Npcs(XApi.api()).query().all());
+        List<Npc> results = new ArrayList<>(new Npcs(api).query().all());
         results.removeIf(filter.negate());
         results.sort((a, b) -> Integer.compare(a.distanceToPlayer(), b.distanceToPlayer()));
         return new EntityResultSet<>(results);
