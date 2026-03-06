@@ -1,75 +1,110 @@
 package net.botwithus.xapi.query;
 
-import net.botwithus.rs3.item.InventoryItem;
-import net.botwithus.xapi.query.base.ItemQuery;
+import com.botwithus.bot.api.model.InventoryItem;
+import net.botwithus.xapi.XApi;
+import net.botwithus.xapi.query.base.Query;
 import net.botwithus.xapi.query.result.ResultSet;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+import java.util.function.BiFunction;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
-/**
- * A query class for filtering and retrieving inventory items based on various criteria.
- */
-public class InventoryItemQuery extends ItemQuery<InventoryItem, InventoryItemQuery> {
+public class InventoryItemQuery implements Query<InventoryItem, ResultSet<InventoryItem>> {
 
-    /**
-     * Constructs a new InvItemQuery with the specified inventory IDs.
-     *
-     * @param inventoryId the inventory IDs to query
-     */
-    public InventoryItemQuery(int... inventoryId) {
-        super(inventoryId);
+    private final int[] inventoryIds;
+    private Predicate<InventoryItem> filter = item -> true;
+
+    public InventoryItemQuery(int... inventoryIds) {
+        this.inventoryIds = inventoryIds;
     }
 
-    /**
-     * Creates a new InvItemQuery with the specified inventory IDs.
-     *
-     * @param inventoryIds the inventory IDs to query
-     * @return a new InvItemQuery instance
-     */
     public static InventoryItemQuery newQuery(int... inventoryIds) {
         return new InventoryItemQuery(inventoryIds);
     }
 
-    /**
-     * Retrieves the results of the query as a ResultSet.
-     *
-     * @return a ResultSet containing the filtered inventory items
-     */
-    @Override
-    public ResultSet<InventoryItem> results() {
-        return new ResultSet<>(inventoryQuery.results().first().getItems().stream().filter(this).toList());
+    public InventoryItemQuery id(int... ids) {
+        filter = filter.and(item -> {
+            for (int id : ids) {
+                if (item.itemId() == id) {
+                    return true;
+                }
+            }
+            return false;
+        });
+        return this;
     }
 
-    /**
-     * Returns an iterator over the elements in the result set.
-     *
-     * @return an Iterator over the elements in the result set
-     */
+    public InventoryItemQuery slot(int... slots) {
+        filter = filter.and(item -> {
+            for (int slot : slots) {
+                if (item.slot() == slot) {
+                    return true;
+                }
+            }
+            return false;
+        });
+        return this;
+    }
+
+    public InventoryItemQuery name(BiFunction<String, CharSequence, Boolean> matcher, String... names) {
+        filter = filter.and(item -> {
+            String name = item.itemId() > -1 ? XApi.api().getItemType(item.itemId()).name() : null;
+            if (name == null) {
+                return false;
+            }
+            for (String expected : names) {
+                if (expected != null && Boolean.TRUE.equals(matcher.apply(name, expected))) {
+                    return true;
+                }
+            }
+            return false;
+        });
+        return this;
+    }
+
+    public InventoryItemQuery name(String... names) {
+        return name(String::contentEquals, names);
+    }
+
+    public InventoryItemQuery name(Pattern... patterns) {
+        filter = filter.and(item -> {
+            String name = item.itemId() > -1 ? XApi.api().getItemType(item.itemId()).name() : null;
+            if (name == null) {
+                return false;
+            }
+            for (Pattern pattern : patterns) {
+                if (pattern != null && pattern.matcher(name).matches()) {
+                    return true;
+                }
+            }
+            return false;
+        });
+        return this;
+    }
+
+    @Override
+    public ResultSet<InventoryItem> results() {
+        List<InventoryItem> items = new ArrayList<>();
+        for (int inventoryId : inventoryIds) {
+            items.addAll(XApi.api().queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
+                    .inventoryId(inventoryId)
+                    .nonEmpty(false)
+                    .build()));
+        }
+        items.removeIf(filter.negate());
+        return new ResultSet<>(items);
+    }
+
     @Override
     public Iterator<InventoryItem> iterator() {
         return results().iterator();
     }
 
-    /**
-     * Tests if an inventory item matches the query predicate.
-     *
-     * @param inventoryItem the inventory item to test
-     * @return true if the inventory item matches, false otherwise
-     */
     @Override
     public boolean test(InventoryItem inventoryItem) {
-        return this.root.test(inventoryItem);
-    }
-
-    /**
-     * Filters inventory items by slot.
-     *
-     * @param slots the slots to filter by
-     * @return the updated InvItemQuery
-     */
-    public InventoryItemQuery slot(int... slots) {
-        this.root = this.root.and(t -> Arrays.stream(slots).anyMatch(i -> i == t.getSlot()));
-        return this;
+        return filter.test(inventoryItem);
     }
 }

@@ -1,12 +1,11 @@
 plugins {
-    kotlin("jvm") version "2.1.0"
     java
     `maven-publish`
 }
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(24))
+        languageVersion.set(JavaLanguageVersion.of(21))
     }
 }
 
@@ -22,35 +21,26 @@ group = "net.botwithus.xapi"
 version = "2.0.0-SNAPSHOT"
 
 repositories {
-    mavenLocal()
     mavenCentral()
-    maven {
-        setUrl("https://nexus.botwithus.net/repository/maven-snapshots/")
-    }
 }
 
 dependencies {
-    implementation("net.botwithus.api:api:1.+")
-    implementation("net.botwithus.imgui:imgui:1.+")
-    implementation("org.projectlombok:lombok:1.18.26")
+    implementation(files("../BWUJavaScriptingFramework/api/build/libs/api-1.0-SNAPSHOT.jar"))
     implementation("com.google.code.gson:gson:2.10.1")
-
-    // Logging dependencies
     implementation("org.slf4j:slf4j-api:2.0.9")
+    testImplementation(platform("org.junit:junit-bom:5.10.0"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 publishing {
     repositories {
         maven {
-            url = if (project.version.toString().endsWith("SNAPSHOT")) {
-                uri("https://nexus.botwithus.net/repository/maven-snapshots/")
-            } else {
-                uri("https://nexus.botwithus.net/repository/maven-releases/")
-            }
-            credentials {
-                username = System.getenv("MAVEN_REPO_USER")
-                password = System.getenv("MAVEN_REPO_PASS")
-            }
+            url = layout.buildDirectory.dir("repo").get().asFile.toURI()
         }
     }
 
@@ -63,8 +53,8 @@ publishing {
                 description.set("Extended API framework for BotWithUs RuneScape 3 bot development")
                 
                 properties.set(mapOf(
-                    "maven.compiler.source" to "24",
-                    "maven.compiler.target" to "24"
+                    "maven.compiler.source" to "21",
+                    "maven.compiler.target" to "21"
                 ))
             }
         }

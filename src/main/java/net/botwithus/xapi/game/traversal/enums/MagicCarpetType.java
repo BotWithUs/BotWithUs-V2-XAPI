@@ -1,7 +1,8 @@
 package net.botwithus.xapi.game.traversal.enums;
 
-import net.botwithus.rs3.minimenu.Action;
-import net.botwithus.rs3.minimenu.MiniMenu;
+import com.botwithus.bot.api.inventory.ActionTypes;
+import com.botwithus.bot.api.model.GameAction;
+import net.botwithus.xapi.XApi;
 import net.botwithus.xapi.game.traversal.MagicCarpetNetwork;
 
 public enum MagicCarpetType {
@@ -26,14 +27,11 @@ public enum MagicCarpetType {
         return interfaceIndex << 16 | componentIndex;
     }
 
-    //TODO: Update to no longer use MiniMenu.doAction
     public boolean teleport() {
-        if (!MagicCarpetNetwork.isOpen()) {
-            MagicCarpetNetwork.open();
-        } else {
-            return MiniMenu.doAction(Action.COMPONENT, 1, -1, getId()) > 0;
+        if (!MagicCarpetNetwork.isOpen() && !MagicCarpetNetwork.open()) {
+            return false;
         }
-        return false;
+        XApi.api().queueAction(new GameAction(ActionTypes.COMPONENT, 1, -1, getId()));
+        return true;
     }
 }
-

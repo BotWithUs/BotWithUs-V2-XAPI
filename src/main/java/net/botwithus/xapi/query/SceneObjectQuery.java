@@ -1,195 +1,131 @@
 package net.botwithus.xapi.query;
 
-import net.botwithus.rs3.cache.assets.so.SceneObjectDefinition;
-import net.botwithus.rs3.entities.SceneObject;
-import net.botwithus.rs3.world.World;
-import net.botwithus.xapi.query.base.EntityQuery;
+import com.botwithus.bot.api.entities.SceneObject;
+import com.botwithus.bot.api.entities.SceneObjects;
+import net.botwithus.xapi.XApi;
+import net.botwithus.xapi.query.base.Query;
 import net.botwithus.xapi.query.result.EntityResultSet;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.function.BiFunction;
+import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
-public class SceneObjectQuery extends EntityQuery<SceneObject> {
+public class SceneObjectQuery implements Query<SceneObject, EntityResultSet<SceneObject>> {
 
-    private static final Logger logger = LoggerFactory.getLogger(SceneObjectQuery.class);
+    private Predicate<SceneObject> filter = object -> true;
 
-    /**
-     * Creates a new SceneObjectQuery instance.
-     *
-     * @return a new SceneObjectQuery instance
-     */
     public static SceneObjectQuery newQuery() {
         return new SceneObjectQuery();
     }
 
-    /**
-     * Retrieves the results of the query.
-     *
-     * @return a ResultSet containing the query results
-     */
-    @Override
-    public EntityResultSet<SceneObject> results() {
-        return new EntityResultSet<>(World.getSceneObjects().stream().filter(this).toList());
+    public SceneObjectQuery typeId(int... typeIds) {
+        filter = filter.and(object -> matchesAny(object.typeId(), typeIds));
+        return this;
     }
 
-    /**
-     * Returns an iterator over the query results.
-     *
-     * @return an Iterator over the query results
-     */
+    public SceneObjectQuery animation(int... animations) {
+        return this;
+    }
+
+    public SceneObjectQuery hidden(boolean hidden) {
+        filter = filter.and(object -> object.isHidden() == hidden);
+        return this;
+    }
+
+    public SceneObjectQuery name(BiFunction<String, CharSequence, Boolean> matcher, String... names) {
+        filter = filter.and(object -> matchesAny(object.name(), matcher, names));
+        return this;
+    }
+
+    public SceneObjectQuery name(String... names) {
+        return name(String::contentEquals, names);
+    }
+
+    public SceneObjectQuery name(Pattern... patterns) {
+        filter = filter.and(object -> matchesAny(object.name(), patterns));
+        return this;
+    }
+
+    public SceneObjectQuery option(BiFunction<String, CharSequence, Boolean> matcher, String... options) {
+        filter = filter.and(object -> object.getOptions().stream().anyMatch(option -> matchesAny(option, matcher, options)));
+        return this;
+    }
+
+    public SceneObjectQuery option(String... options) {
+        return option(String::contentEquals, options);
+    }
+
+    public SceneObjectQuery option(Pattern... patterns) {
+        filter = filter.and(object -> object.getOptions().stream().anyMatch(option -> matchesAny(option, patterns)));
+        return this;
+    }
+
+    public SceneObjectQuery and(SceneObjectQuery other) {
+        filter = filter.and(other.filter);
+        return this;
+    }
+
+    public SceneObjectQuery or(SceneObjectQuery other) {
+        filter = filter.or(other.filter);
+        return this;
+    }
+
+    public SceneObjectQuery invert() {
+        filter = filter.negate();
+        return this;
+    }
+
+    @Override
+    public EntityResultSet<SceneObject> results() {
+        List<SceneObject> results = new ArrayList<>(new SceneObjects(XApi.api()).query().all());
+        results.removeIf(filter.negate());
+        results.sort((a, b) -> Integer.compare(a.distanceToPlayer(), b.distanceToPlayer()));
+        return new EntityResultSet<>(results);
+    }
+
     @Override
     public Iterator<SceneObject> iterator() {
         return results().iterator();
     }
 
-    /**
-     * Tests if a scene object matches the query predicate.
-     *
-     * @param sceneObject the scene object to test
-     * @return true if the scene object matches, false otherwise
-     */
     @Override
     public boolean test(SceneObject sceneObject) {
-        return this.root.test(sceneObject);
+        return filter.test(sceneObject);
     }
 
-    /**
-     * Filters scene objects by type ID.
-     *
-     * @param typeIds the type IDs to filter by
-     * @return the updated SceneObjectQuery
-     */
-    public SceneObjectQuery typeId(int... typeIds) {
-        if (typeIds.length == 0) {
-            return this;
+    private static boolean matchesAny(int actual, int... expected) {
+        for (int value : expected) {
+            if (value == actual) {
+                return true;
+            }
         }
-        this.root = this.root.and(t -> Arrays.stream(typeIds).anyMatch(i -> t.getTypeId() == i));
-        return this;
+        return false;
     }
 
-    /**
-     * Filters scene objects by animation ID.
-     *
-     * @param animations the animation IDs to filter by
-     * @return the updated SceneObjectQuery
-     */
-    public SceneObjectQuery animation(int... animations) {
-        if (animations.length == 0) {
-            return this;
+    private static boolean matchesAny(String actual, BiFunction<String, CharSequence, Boolean> matcher, String... expected) {
+        if (actual == null) {
+            return false;
         }
-        this.root = this.root.and(t -> Arrays.stream(animations).anyMatch(i -> t.getAnimationId() == i));
-        return this;
-    }
-
-    /**
-     * Filters scene objects by hidden status.
-     *
-     * @param hidden the hidden status to filter by
-     * @return the updated SceneObjectQuery
-     */
-    public SceneObjectQuery hidden(boolean hidden) {
-        this.root = this.root.and(t -> t.isHidden() == hidden);
-        return this;
-    }
-
-    /**
-     * Filters scene objects by multiple types.
-     *
-     * @param sceneObjectDefinitions the location types to filter by
-     * @return the updated SceneObjectQuery
-     */
-    public SceneObjectQuery multiType(SceneObjectDefinition... sceneObjectDefinitions) {
-        if (sceneObjectDefinitions.length == 0) {
-            return this;
+        for (String value : expected) {
+            if (value != null && Boolean.TRUE.equals(matcher.apply(actual, value))) {
+                return true;
+            }
         }
-        this.root = this.root.and(t -> Arrays.stream(sceneObjectDefinitions).anyMatch(i -> t.getMultiType() == i));
-        return this;
+        return false;
     }
 
-    /**
-     * Filters scene objects by name using a predicate.
-     *
-     * @param spred the predicate to match names
-     * @param names the names to filter by
-     * @return the updated SceneObjectQuery
-     */
-    public SceneObjectQuery name(BiFunction<String, CharSequence, Boolean> spred, String... names) {
-        if (names.length == 0) {
-            return this;
+    private static boolean matchesAny(String actual, Pattern... patterns) {
+        if (actual == null) {
+            return false;
         }
-        this.root = this.root.and(t -> Arrays.stream(names).anyMatch(i -> spred.apply(i, t.getName())));
-        return this;
-    }
-
-    /**
-     * Filters scene objects by name using content equality.
-     *
-     * @param names the names to filter by
-     * @return the updated SceneObjectQuery
-     */
-    public SceneObjectQuery name(String... names) {
-        return name(String::contentEquals, names);
-    }
-
-    public SceneObjectQuery name(java.util.regex.Pattern... patterns) {
-        if (patterns.length == 0) {
-            return this;
+        for (Pattern pattern : patterns) {
+            if (pattern != null && pattern.matcher(actual).matches()) {
+                return true;
+            }
         }
-        this.root = this.root.and(t -> {
-            String objName = t.getName();
-            return objName != null && Arrays.stream(patterns).anyMatch(p -> p.matcher(objName).matches());
-        });
-        return this;
+        return false;
     }
-
-    /**
-     * Filters scene objects by options using a predicate.
-     *
-     * @param spred the predicate to match options
-     * @param options the options to filter by
-     * @return the updated SceneObjectQuery
-     */
-    public SceneObjectQuery option(BiFunction<String, CharSequence, Boolean> spred, String... options) {
-        if (options.length == 0) {
-            return this;
-        }
-        this.root = this.root.and(t -> {
-            var objOptions = t.getOptions();
-            return objOptions != null && Arrays.stream(options).anyMatch(i -> i != null && objOptions.stream().anyMatch(j -> j != null && spred.apply(i, j)));
-        });
-        return this;
-    }
-
-    /**
-     * Filters scene objects by options using content equality.
-     *
-     * @param option the options to filter by
-     * @return the updated SceneObjectQuery
-     */
-    public SceneObjectQuery option(String... option) {
-        return option(String::contentEquals, option);
-    }
-
-    /**
-     * Filters scene objects by options using regular expression patterns.
-     *
-     * @param patterns the regex patterns to filter options by
-     * @return the updated SceneObjectQuery
-     */
-    public SceneObjectQuery option(java.util.regex.Pattern... patterns) {
-        if (patterns.length == 0) {
-            return this;
-        }
-        this.root = this.root.and(t -> {
-            var objOptions = t.getOptions();
-            return objOptions != null && objOptions.stream().anyMatch(opt ->
-                Arrays.stream(patterns).anyMatch(p -> p.matcher(opt).matches())
-            );
-        });
-        return this;
-    }
-
 }

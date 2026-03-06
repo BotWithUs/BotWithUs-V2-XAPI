@@ -1,7 +1,6 @@
 package net.botwithus.xapi.script.permissive.node.leaf;
 
 import net.botwithus.rs3.minimenu.Interactive;
-import net.botwithus.scripts.Script;
 import net.botwithus.xapi.script.permissive.base.PermissiveScript;
 import net.botwithus.xapi.script.permissive.node.LeafNode;
 

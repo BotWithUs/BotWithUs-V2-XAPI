@@ -1,6 +1,5 @@
 package net.botwithus.xapi.script.permissive.node;
 
-import net.botwithus.scripts.Script;
 import net.botwithus.xapi.script.permissive.Interlock;
 import net.botwithus.xapi.script.permissive.base.PermissiveScript;
 import net.botwithus.xapi.script.permissive.serialization.InterlockJson;

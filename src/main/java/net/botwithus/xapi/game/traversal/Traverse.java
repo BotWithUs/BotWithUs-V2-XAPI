@@ -1,109 +1,61 @@
 package net.botwithus.xapi.game.traversal;
 
-import net.botwithus.rs3.entities.LocalPlayer;
-import net.botwithus.rs3.minimenu.Action;
-import net.botwithus.rs3.minimenu.MiniMenu;
-import net.botwithus.rs3.world.Coordinate;
-import net.botwithus.rs3.world.Distance;
-import net.botwithus.util.Rand;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.botwithus.bot.api.inventory.ActionTypes;
+import com.botwithus.bot.api.model.GameAction;
+import com.botwithus.bot.api.model.LocalPlayer;
+import net.botwithus.xapi.XApi;
 
-public class Traverse {
-    private final static Logger logger = LoggerFactory.getLogger(Traverse.class);
+import java.util.concurrent.ThreadLocalRandom;
+
+public final class Traverse {
 
     private static final int MAX_LOCAL_DISTANCE = 80;
     private static final int MAX_STEP_SIZE = 16;
     private static final int MIN_STEP_SIZE = 10;
 
-    /**
-     * Walks to a coordinate, automatically choosing minimap usage and step size.
-     * If the distance to the destination is less than 24, does not use minimap; otherwise, uses minimap.
-     * Step size is randomized between 10 and 16 (inclusive).
-     * @param destinationCoord The destination coordinate
-     * @return true if walking was initiated successfully
-     */
-    public static boolean to(Coordinate destinationCoord) {
-        if (destinationCoord == null) {
-            logger.warn("ERROR: Coordinate is null");
-            return false;
-        }
-        var distance = Distance.to(destinationCoord);
-        var useMinimap = distance >= Rand.nextInt(22, 28);
-        var stepSize = Rand.nextInt(MIN_STEP_SIZE, MAX_STEP_SIZE + 1);
-        return bresenhamTo(destinationCoord, useMinimap, stepSize);
+    private Traverse() {
     }
-    
-    /**
-     * Walks to a coordinate using Bresenham line algorithm for pathfinding
-     * @param destinationCoord The destination coordinate
-     * @param minimap Whether to use minimap for walking (currently ignored, uses MiniMenu)
-     * @param stepSize Maximum step size for each movement
-     * @return true if walking was initiated successfully
-     */
-    public static boolean bresenhamTo(Coordinate destinationCoord, boolean minimap, int stepSize) {
-        LocalPlayer player = LocalPlayer.self();
-        if (player == null) {
-            logger.warn("[Traverse#bresenham] Player is null");
+
+    public static boolean to(int tileX, int tileY, int plane) {
+        LocalPlayer player = XApi.api().getLocalPlayer();
+        if (player == null || player.plane() != plane) {
             return false;
         }
+        int distance = Math.max(Math.abs(tileX - player.tileX()), Math.abs(tileY - player.tileY()));
+        boolean useMinimap = distance >= ThreadLocalRandom.current().nextInt(22, 28);
+        int stepSize = ThreadLocalRandom.current().nextInt(MIN_STEP_SIZE, MAX_STEP_SIZE + 1);
+        return bresenhamTo(tileX, tileY, plane, useMinimap, stepSize);
+    }
 
-        Coordinate currentCoordinate = player.getCoordinate();
-        if (currentCoordinate == null) {
-            logger.warn("[Traverse#bresenham] Current coordinate is null");
+    public static boolean bresenhamTo(int tileX, int tileY, int plane, boolean minimap, int stepSize) {
+        LocalPlayer player = XApi.api().getLocalPlayer();
+        if (player == null || player.plane() != plane) {
             return false;
         }
-
-        int dx = destinationCoord.x() - currentCoordinate.x();
-        int dy = destinationCoord.y() - currentCoordinate.y();
-        int distance = (int)Math.hypot(dx, dy);
-
+        int dx = tileX - player.tileX();
+        int dy = tileY - player.tileY();
+        int distance = (int) Math.hypot(dx, dy);
         if (distance > stepSize) {
-            int stepX = destinationCoord.x() + dx * stepSize / distance;
-            int stepY = destinationCoord.y() + dy * stepSize / distance;
-            return walkTo(new Coordinate(stepX, stepY, destinationCoord.z()), minimap);
-        } else {
-            return walkTo(destinationCoord, minimap);
+            int stepX = player.tileX() + dx * stepSize / distance;
+            int stepY = player.tileY() + dy * stepSize / distance;
+            return walkTo(stepX, stepY, plane, minimap);
         }
+        return walkTo(tileX, tileY, plane, minimap);
     }
 
-    /**
-     * Walks to a coordinate using MiniMenu
-     * @param destinationCoord The destination coordinate
-     * @param minimap Whether to use minimap for walking (currently ignored, uses MiniMenu)
-     * @return true if walking was initiated successfully
-     */
-    public static boolean walkTo(Coordinate destinationCoord, boolean minimap) {
-        if (destinationCoord == null) {
-            logger.warn("ERROR: Coordinate is null");
+    public static boolean walkTo(int tileX, int tileY, int plane, boolean minimap) {
+        LocalPlayer player = XApi.api().getLocalPlayer();
+        if (player == null || player.plane() != plane) {
             return false;
         }
-
-        try {
-            logger.info("Attempting to walk to " + destinationCoord.x() + ", " + destinationCoord.y());
-
-            if (Distance.to(destinationCoord) < 2) {
-                logger.info("Already close to target location, skipping walk");
-                return true;
-            }
-
-            if (Distance.to(destinationCoord) > MAX_LOCAL_DISTANCE) {
-                logger.info("Target location is too far away, using Bresenham pathfinding");
-                return bresenhamTo(destinationCoord, minimap, Rand.nextInt(MIN_STEP_SIZE, MAX_STEP_SIZE));
-            }
-
-            int result = MiniMenu.doAction(Action.WALK, minimap ? 1 : 0, destinationCoord.x(), destinationCoord.y());
-
-            if (result > 0) {
-                logger.info("Successfully initiated walk to " + destinationCoord.x() + ", " + destinationCoord.y());
-                return true;
-            } else {
-                logger.warn("Failed to walk to " + destinationCoord.x() + ", " + destinationCoord.y() + " - result: " + result);
-                return false;
-            }
-        } catch (Exception e) {
-            logger.trace("Exception while walking to " + destinationCoord.x() + ", " + destinationCoord.y() + ": " + e.getMessage(), e);
-            return false;
+        int distance = Math.max(Math.abs(tileX - player.tileX()), Math.abs(tileY - player.tileY()));
+        if (distance < 2) {
+            return true;
         }
+        if (distance > MAX_LOCAL_DISTANCE) {
+            return bresenhamTo(tileX, tileY, plane, minimap, ThreadLocalRandom.current().nextInt(MIN_STEP_SIZE, MAX_STEP_SIZE));
+        }
+        XApi.api().queueAction(new GameAction(ActionTypes.WALK, minimap ? 1 : 0, tileX, tileY));
+        return true;
     }
 }
