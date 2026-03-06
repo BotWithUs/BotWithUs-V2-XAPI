@@ -1,6 +1,5 @@
 package net.botwithus.xapi.script.permissive.node;
 
-import net.botwithus.scripts.Script;
 import net.botwithus.xapi.script.permissive.EvaluationResult;
 import net.botwithus.xapi.script.permissive.base.PermissiveScript;
 import net.botwithus.xapi.script.permissive.interfaces.ITreeNode;

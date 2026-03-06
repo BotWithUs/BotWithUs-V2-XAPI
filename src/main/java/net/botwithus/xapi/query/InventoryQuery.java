@@ -1,190 +1,150 @@
 package net.botwithus.xapi.query;
 
-import net.botwithus.rs3.cache.assets.inventories.InventoryDefinition;
-import net.botwithus.rs3.inventories.Inventory;
-import net.botwithus.rs3.inventories.InventoryManager;
-import net.botwithus.rs3.item.Item;
+import com.botwithus.bot.api.model.InventoryInfo;
+import net.botwithus.xapi.XApi;
 import net.botwithus.xapi.query.base.Query;
 import net.botwithus.xapi.query.result.ResultSet;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.Objects;
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 
-/**
- * A query class for filtering and retrieving inventories based on various criteria.
- */
-public class InventoryQuery implements Query<Inventory, ResultSet<Inventory>> {
+public class InventoryQuery implements Query<InventoryInfo, ResultSet<InventoryInfo>> {
 
-    protected Predicate<Inventory> root;
-    private int[] ids;
+    private final int[] ids;
+    private Predicate<InventoryInfo> filter;
 
-    /**
-     * Constructs a new InventoryQuery with the specified IDs.
-     *
-     * @param ids the IDs to query
-     */
     public InventoryQuery(int... ids) {
         this.ids = ids;
-        if (ids.length == 0) {
-            root = t -> true;
-        } else {
-            root = t -> Arrays.stream(ids).anyMatch(i -> i == t.getId());
-        }
+        this.filter = info -> ids.length == 0 || contains(ids, info.inventoryId());
     }
 
-    /**
-     * Retrieves the results of the query as a ResultSet.
-     *
-     * @return a ResultSet containing the filtered inventories
-     */
-    @Override
-    public ResultSet<Inventory> results() {
-        return new ResultSet<>(
-                Arrays.stream(ids)
-                        .mapToObj(InventoryManager::getInventory) // Map IDs to Inventories
-                        .filter(Objects::nonNull) // Filter out null inventories
-                        .filter(this) // Apply the predicate (root.test)
-                        .toList() // Collect the filtered inventories into a list
-        );
+    public static InventoryQuery newQuery(int... ids) {
+        return new InventoryQuery(ids);
     }
 
-    /**
-     * Returns an iterator over the elements in the result set.
-     *
-     * @return an Iterator over the elements in the result set
-     */
-    @Override
-    public Iterator<Inventory> iterator() {
-        return results().iterator();
-    }
-
-    /**
-     * Tests if an inventory matches the query predicate.
-     *
-     * @param inventory the inventory to test
-     * @return true if the inventory matches, false otherwise
-     */
-    @Override
-    public boolean test(Inventory inventory) {
-        return this.root.test(inventory);
-    }
-
-    /**
-     * Filters inventories by type.
-     *
-     * @param types the inventory types to filter by
-     * @return the updated InventoryQuery
-     */
-    public InventoryQuery type(InventoryDefinition... types) {
-        root = root.and(t -> Arrays.stream(types).anyMatch(i -> i == t.getDefinition()));
-        return this;
-    }
-
-    /**
-     * Filters inventories by full status.
-     *
-     * @param full the full status to filter by
-     * @return the updated InventoryQuery
-     */
     public InventoryQuery isFull(boolean full) {
-        root = root.and(t -> t.isFull() == full);
+        filter = filter.and(info -> (info.capacity() > 0 && info.itemCount() >= info.capacity()) == full);
         return this;
     }
 
-    /**
-     * Filters inventories by the number of free slots using a custom function.
-     *
-     * @param func the function to compare free slots
-     * @param slots the number of slots to compare
-     * @return the updated InventoryQuery
-     */
-    public InventoryQuery freeSlots(BiFunction<Integer, Integer, Boolean> func, int slots) {
-        root = root.and(t -> func.apply(t.freeSlots(), slots));
+    public InventoryQuery freeSlots(BiFunction<Integer, Integer, Boolean> matcher, int slots) {
+        filter = filter.and(info -> Boolean.TRUE.equals(matcher.apply(info.capacity() - info.itemCount(), slots)));
         return this;
     }
 
-    /**
-     * Filters inventories by the number of free slots.
-     *
-     * @param slots the number of free slots to filter by
-     * @return the updated InventoryQuery
-     */
     public InventoryQuery freeSlots(int slots) {
-        return freeSlots((a, b) -> a >= b, slots);
+        return freeSlots((actual, expected) -> actual >= expected, slots);
     }
 
-    /**
-     * Filters inventories by item IDs.
-     *
-     * @param itemIds the item IDs to filter by
-     * @return the updated InventoryQuery
-     */
     public InventoryQuery contains(int... itemIds) {
-        root = root.and(t -> Arrays.stream(itemIds).anyMatch(t::contains));
-        return this;
-    }
-
-    /**
-     * Filters inventories by containing any of the specified item names using a custom function.
-     *
-     * @param spred the function to compare item names
-     * @param names the item names to filter by
-     * @return the updated InventoryQuery
-     */
-    public InventoryQuery contains(BiFunction<String, CharSequence, Boolean> spred, String... names) {
-        if (names.length == 0) {
-            return this;
-        }
-        this.root = this.root.and(t -> {
-            var itemNames = t.getItems().stream().map(Item::getName).toList();
-            return Arrays.stream(names).anyMatch(i -> itemNames.stream().anyMatch(j -> spred.apply(i, j)));
+        filter = filter.and(info -> {
+            for (int itemId : itemIds) {
+                if (!XApi.api().queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
+                        .inventoryId(info.inventoryId())
+                        .itemId(itemId)
+                        .nonEmpty(true)
+                        .maxResults(1)
+                        .build()).isEmpty()) {
+                    return true;
+                }
+            }
+            return false;
         });
         return this;
     }
 
-    /**
-     * Filters inventories by containing any of the specified item names.
-     *
-     * @param names the item names to filter by
-     * @return the updated InventoryQuery
-     */
+    public InventoryQuery containsAll(int... itemIds) {
+        filter = filter.and(info -> {
+            for (int itemId : itemIds) {
+                if (XApi.api().queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
+                        .inventoryId(info.inventoryId())
+                        .itemId(itemId)
+                        .nonEmpty(true)
+                        .maxResults(1)
+                        .build()).isEmpty()) {
+                    return false;
+                }
+            }
+            return true;
+        });
+        return this;
+    }
+
+    public InventoryQuery contains(BiFunction<String, CharSequence, Boolean> matcher, String... names) {
+        filter = filter.and(info -> XApi.api().queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
+                        .inventoryId(info.inventoryId())
+                        .nonEmpty(true)
+                        .build()).stream()
+                .map(item -> XApi.api().getItemType(item.itemId()).name())
+                .anyMatch(name -> {
+                    for (String candidate : names) {
+                        if (candidate != null && Boolean.TRUE.equals(matcher.apply(name, candidate))) {
+                            return true;
+                        }
+                    }
+                    return false;
+                }));
+        return this;
+    }
+
     public InventoryQuery contains(String... names) {
         return contains(String::contentEquals, names);
     }
 
-    /**
-     * Filters inventories by containing all specified item IDs.
-     *
-     * @param itemIds the item IDs to filter by
-     * @return the updated InventoryQuery
-     */
-    public InventoryQuery containsAll(int... itemIds) {
-        root = root.and(t -> Arrays.stream(itemIds).allMatch(t::contains));
-        return this;
-    }
-
-    /**
-     * Filters inventories by item categories.
-     *
-     * @param categories the item categories to filter by
-     * @return the updated InventoryQuery
-     */
     public InventoryQuery containsCategory(int... categories) {
-        root = root.and(t -> Arrays.stream(categories).anyMatch(t::containsByCategory));
+        filter = filter.and(info -> XApi.api().queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
+                        .inventoryId(info.inventoryId())
+                        .nonEmpty(true)
+                        .build()).stream()
+                .map(item -> XApi.api().getItemType(item.itemId()).category())
+                .anyMatch(category -> contains(categories, category)));
         return this;
     }
 
-    /**
-     * Filters inventories by containing all specified item categories.
-     *
-     * @param categories the item categories to filter by
-     * @return the updated InventoryQuery
-     */
     public InventoryQuery containsAllCategory(int... categories) {
-        root = root.and(t -> Arrays.stream(categories).allMatch(t::containsByCategory));
+        filter = filter.and(info -> {
+            List<Integer> present = XApi.api().queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
+                            .inventoryId(info.inventoryId())
+                            .nonEmpty(true)
+                            .build()).stream()
+                    .map(item -> XApi.api().getItemType(item.itemId()).category())
+                    .toList();
+            for (int category : categories) {
+                if (!present.contains(category)) {
+                    return false;
+                }
+            }
+            return true;
+        });
         return this;
+    }
+
+    @Override
+    public ResultSet<InventoryInfo> results() {
+        List<InventoryInfo> results = new ArrayList<>(XApi.api().queryInventories());
+        results.removeIf(filter.negate());
+        return new ResultSet<>(results);
+    }
+
+    @Override
+    public Iterator<InventoryInfo> iterator() {
+        return results().iterator();
+    }
+
+    @Override
+    public boolean test(InventoryInfo inventoryInfo) {
+        return filter.test(inventoryInfo);
+    }
+
+    private static boolean contains(int[] values, int actual) {
+        for (int value : values) {
+            if (value == actual) {
+                return true;
+            }
+        }
+        return false;
     }
 }

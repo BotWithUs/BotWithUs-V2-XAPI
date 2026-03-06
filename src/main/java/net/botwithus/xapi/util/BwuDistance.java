@@ -1,26 +1,31 @@
 package net.botwithus.xapi.util;
 
-import net.botwithus.rs3.world.Area;
-import net.botwithus.rs3.world.Distance;
-import net.botwithus.rs3.world.Locatable;
+import net.botwithus.xapi.util.position.Positionable;
 
-public class BwuDistance {
-    public static boolean isLocatableCloser(Locatable primary, Locatable secondary, Locatable destination) {
-        var primaryToDestination = Distance.between(primary, destination);
-        var secondaryToDestination = Distance.between(secondary, destination);
-        return primaryToDestination >= secondaryToDestination;
+public final class BwuDistance {
+
+    private BwuDistance() {
     }
 
-    public static boolean isLocatableBetween(Locatable primary, Locatable secondary, Locatable destination) {
-        if (primary == null || secondary == null || destination == null || primary.getCoordinate() == null || secondary.getCoordinate() == null || destination.getCoordinate() == null)
-            return false;
+    public static boolean isLocatableCloser(Positionable primary, Positionable secondary, Positionable destination) {
+        return distance(primary, destination) >= distance(secondary, destination);
+    }
 
-        var center = new Area.Rectangular(primary.getCoordinate(), destination.getCoordinate()).getCentroid();
-        if (center == null)
+    public static boolean isLocatableBetween(Positionable primary, Positionable secondary, Positionable destination) {
+        if (primary == null || secondary == null || destination == null) {
             return false;
+        }
+        int centerX = (primary.x() + destination.x()) / 2;
+        int centerY = (primary.y() + destination.y()) / 2;
+        return chebyshev(primary.x(), primary.y(), centerX, centerY)
+                >= chebyshev(secondary.x(), secondary.y(), centerX, centerY);
+    }
 
-        var primaryToCenter = Distance.between(primary, center);
-        var secondaryToCenter = Distance.between(secondary, center);
-        return primaryToCenter >= secondaryToCenter;
+    public static int distance(Positionable a, Positionable b) {
+        return chebyshev(a.x(), a.y(), b.x(), b.y());
+    }
+
+    public static int chebyshev(int x1, int y1, int x2, int y2) {
+        return Math.max(Math.abs(x1 - x2), Math.abs(y1 - y2));
     }
 }

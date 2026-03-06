@@ -1,303 +1,131 @@
 package net.botwithus.xapi.query;
 
-import net.botwithus.rs3.cache.assets.items.ItemDefinition;
-import net.botwithus.rs3.cache.assets.items.StackType;
-import net.botwithus.rs3.item.GroundItem;
-import net.botwithus.rs3.world.Area;
-import net.botwithus.rs3.world.Coordinate;
-import net.botwithus.rs3.world.Distance;
-import net.botwithus.rs3.world.World;
+import com.botwithus.bot.api.entities.GroundItems;
+import net.botwithus.xapi.XApi;
 import net.botwithus.xapi.query.base.Query;
 import net.botwithus.xapi.query.result.ResultSet;
-import org.jetbrains.annotations.NotNull;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
+import java.util.regex.Pattern;
 
-/**
- * A query class for filtering and retrieving ground items based on various criteria.
- */
-public class GroundItemQuery implements Query<GroundItem, ResultSet<GroundItem>> {
+public class GroundItemQuery implements Query<GroundItems.Entry, ResultSet<GroundItems.Entry>> {
 
-    protected Predicate<GroundItem> root;
+    private Predicate<GroundItems.Entry> filter = item -> true;
 
-    /**
-     * Constructs a new GroundItemQuery with a default predicate.
-     */
-    @SuppressWarnings("unused")
-    public GroundItemQuery() {
-        root = groundItem -> true;
-    }
-
-    /**
-     * Creates a new GroundItemQuery instance.
-     *
-     * @return a new GroundItemQuery instance
-     */
     public static GroundItemQuery newQuery() {
         return new GroundItemQuery();
     }
 
-    /**
-     * Retrieves the results of the query.
-     *
-     * @return a ResultSet containing the query results
-     */
-    @Override
-    public ResultSet<GroundItem> results() {
-        return new ResultSet<>(World.getGroundItems().stream()
-                .flatMap(itemStack -> itemStack.getItems().stream())
-                .filter(this)
-                .toList());
-    }
-
-    /**
-     * Returns an iterator over the query results.
-     *
-     * @return an Iterator over the query results
-     */
-    @NotNull
-    @Override
-    public Iterator<GroundItem> iterator() {
-        return results().iterator();
-    }
-
-    /**
-     * Tests if a ground item matches the query predicate.
-     *
-     * @param groundItem the ground item to test
-     * @return true if the ground item matches, false otherwise
-     */
-    @Override
-    public boolean test(GroundItem groundItem) {
-        return this.root.test(groundItem);
-    }
-
-    // ========== Item-based filtering methods ==========
-
-    /**
-     * Filters ground items by item ID.
-     *
-     * @param ids the item IDs to filter by
-     * @return the updated GroundItemQuery
-     */
     public GroundItemQuery id(int... ids) {
-        if (ids.length == 0) {
-            return this;
-        }
-        this.root = this.root.and(i -> Arrays.stream(ids).anyMatch(id -> id == i.getId()));
+        filter = filter.and(item -> matchesAny(item.itemId(), ids));
         return this;
     }
 
-    /**
-     * Filters ground items by quantity using a predicate.
-     *
-     * @param spred the predicate to match quantities
-     * @param quantity the quantity to compare against
-     * @return the updated GroundItemQuery
-     */
-    public GroundItemQuery quantity(BiFunction<Integer, Integer, Boolean> spred, int quantity) {
-        this.root = this.root.and(i -> spred.apply(i.getQuantity(), quantity));
+    public GroundItemQuery quantity(BiFunction<Integer, Integer, Boolean> matcher, int quantity) {
+        filter = filter.and(item -> Boolean.TRUE.equals(matcher.apply(item.quantity(), quantity)));
         return this;
     }
 
-    /**
-     * Filters ground items by exact quantity.
-     *
-     * @param quantity the exact quantity to filter by
-     * @return the updated GroundItemQuery
-     */
     public GroundItemQuery quantity(int quantity) {
-        return quantity((a, b) -> a.equals(b), quantity);
+        return quantity(Integer::equals, quantity);
     }
 
-    /**
-     * Filters ground items by item types.
-     *
-     * @param itemTypes the item types to filter by
-     * @return the updated GroundItemQuery
-     */
-    public GroundItemQuery itemTypes(ItemDefinition... itemTypes) {
-        if (itemTypes.length == 0) {
-            return this;
-        }
-        this.root = this.root.and(i -> Arrays.stream(itemTypes).anyMatch(itemType -> itemType.equals(i.getType())));
-        return this;
-    }
-
-    /**
-     * Filters ground items by category.
-     *
-     * @param categories the categories to filter by
-     * @return the updated GroundItemQuery
-     */
     public GroundItemQuery category(int... categories) {
-        if (categories.length == 0) {
-            return this;
-        }
-        this.root = this.root.and(i -> Arrays.stream(categories).anyMatch(category -> category == i.getCategory()));
+        filter = filter.and(item -> matchesAny(XApi.api().getItemType(item.itemId()).category(), categories));
         return this;
     }
 
-    /**
-     * Filters ground items by name using a predicate.
-     *
-     * @param spred the predicate to match names
-     * @param names the names to filter by
-     * @return the updated GroundItemQuery
-     */
-    public GroundItemQuery name(BiFunction<String, CharSequence, Boolean> spred, String... names) {
-        if (names.length == 0) {
-            return this;
-        }
-        this.root = this.root.and(i -> Arrays.stream(names).anyMatch(name -> spred.apply(i.getName(), name)));
+    public GroundItemQuery name(BiFunction<String, CharSequence, Boolean> matcher, String... names) {
+        filter = filter.and(item -> matchesAny(item.name(), matcher, names));
         return this;
     }
 
-    /**
-     * Filters ground items by name using content equality.
-     *
-     * @param names the names to filter by
-     * @return the updated GroundItemQuery
-     */
     public GroundItemQuery name(String... names) {
         return name(String::contentEquals, names);
     }
 
-    /**
-     * Filters ground items by name using regular expression patterns.
-     *
-     * @param patterns the regex patterns to filter names by
-     * @return the updated GroundItemQuery
-     */
-    public GroundItemQuery name(java.util.regex.Pattern... patterns) {
-        if (patterns.length == 0) {
-            return this;
-        }
-        this.root = this.root.and(i -> {
-            String itemName = i.getName();
-            return itemName != null && Arrays.stream(patterns).anyMatch(p -> p.matcher(itemName).matches());
-        });
+    public GroundItemQuery name(Pattern... patterns) {
+        filter = filter.and(item -> matchesAny(item.name(), patterns));
         return this;
     }
 
-    /**
-     * Filters ground items by stack type.
-     *
-     * @param stackTypes the stack types to filter by
-     * @return the updated GroundItemQuery
-     */
-    public GroundItemQuery stackType(StackType... stackTypes) {
-        if (stackTypes.length == 0) {
-            return this;
-        }
-        this.root = this.root.and(i -> Arrays.stream(stackTypes).anyMatch(stackType -> stackType == i.getStackType()));
-        return this;
-    }
-
-    // ========== GroundItem-specific filtering methods ==========
-
-    /**
-     * Filters ground items by coordinate.
-     *
-     * @param coordinates the coordinates to filter by
-     * @return the updated GroundItemQuery
-     */
-    public GroundItemQuery coordinate(Coordinate... coordinates) {
-        if (coordinates.length == 0) {
-            return this;
-        }
-        this.root = this.root.and(i -> Arrays.stream(coordinates).anyMatch(coord -> i.getStack().getCoordinate().equals(coord)));
-        return this;
-    }
-
-    /**
-     * Filters ground items that are inside the given area.
-     *
-     * @param area the area to check
-     * @return the updated GroundItemQuery
-     */
-    public GroundItemQuery inside(Area area) {
-        this.root = this.root.and(i -> area.contains(i.getStack().getCoordinate()));
-        return this;
-    }
-
-    /**
-     * Filters ground items that are outside the given area.
-     *
-     * @param area the area to check
-     * @return the updated GroundItemQuery
-     */
-    public GroundItemQuery outside(Area area) {
-        this.root = this.root.and(i -> !area.contains(i.getStack().getCoordinate()));
-        return this;
-    }
-
-    /**
-     * Filters ground items by distance from the player.
-     *
-     * @param distance the maximum distance
-     * @return the updated GroundItemQuery
-     */
     public GroundItemQuery distance(double distance) {
-        this.root = this.root.and(i -> Distance.to(i.getStack().getCoordinate()) <= distance);
+        filter = filter.and(item -> item.distanceToPlayer() <= distance);
         return this;
     }
 
-    /**
-     * Filters ground items by their validity status.
-     *
-     * @param valid true to filter for valid items, false for invalid items
-     * @return the updated GroundItemQuery
-     */
     public GroundItemQuery valid(boolean valid) {
-        this.root = this.root.and(i -> i.getStack().isValid() == valid);
+        filter = filter.and(item -> valid);
         return this;
     }
 
-    // ========== Utility methods ==========
-
-    /**
-     * Combines the current query predicate with another using logical AND.
-     *
-     * @param other another GroundItemQuery to AND with
-     * @return the updated GroundItemQuery
-     */
     public GroundItemQuery and(GroundItemQuery other) {
-        this.root = this.root.and(other.root);
+        filter = filter.and(other.filter);
         return this;
     }
 
-    /**
-     * Combines the current query predicate with another using logical OR.
-     *
-     * @param other another GroundItemQuery to OR with
-     * @return the updated GroundItemQuery
-     */
     public GroundItemQuery or(GroundItemQuery other) {
-        this.root = this.root.or(other.root);
+        filter = filter.or(other.filter);
         return this;
     }
 
-    /**
-     * Negates the current query predicate.
-     *
-     * @return the updated GroundItemQuery with negated predicate
-     */
     public GroundItemQuery invert() {
-        this.root = this.root.negate();
+        filter = filter.negate();
         return this;
     }
 
-    /**
-     * Marks the current GroundItemQuery and returns it.
-     * This method maintains the specific subtype.
-     *
-     * @return the current GroundItemQuery instance
-     */
-    public GroundItemQuery mark() {
-        return this;
+    @Override
+    public ResultSet<GroundItems.Entry> results() {
+        List<GroundItems.Entry> results = new ArrayList<>(new GroundItems(XApi.api()).query().all());
+        results.removeIf(filter.negate());
+        results.sort((a, b) -> Integer.compare(a.distanceToPlayer(), b.distanceToPlayer()));
+        return new ResultSet<>(results);
+    }
+
+    @Override
+    public Iterator<GroundItems.Entry> iterator() {
+        return results().iterator();
+    }
+
+    @Override
+    public boolean test(GroundItems.Entry groundItem) {
+        return filter.test(groundItem);
+    }
+
+    private static boolean matchesAny(int actual, int... expected) {
+        for (int value : expected) {
+            if (value == actual) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean matchesAny(String actual, BiFunction<String, CharSequence, Boolean> matcher, String... expected) {
+        if (actual == null) {
+            return false;
+        }
+        for (String value : expected) {
+            if (value != null && Boolean.TRUE.equals(matcher.apply(actual, value))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean matchesAny(String actual, Pattern... patterns) {
+        if (actual == null) {
+            return false;
+        }
+        for (Pattern pattern : patterns) {
+            if (pattern != null && pattern.matcher(actual).matches()) {
+                return true;
+            }
+        }
+        return false;
     }
 }
