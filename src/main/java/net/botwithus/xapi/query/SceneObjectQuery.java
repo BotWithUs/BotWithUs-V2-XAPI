@@ -36,10 +36,6 @@ public class SceneObjectQuery implements Query<SceneObject, EntityResultSet<Scen
         return this;
     }
 
-    public SceneObjectQuery animation(int... animations) {
-        return this;
-    }
-
     public SceneObjectQuery hidden(boolean hidden) {
         filter = filter.and(object -> object.isHidden() == hidden);
         return this;

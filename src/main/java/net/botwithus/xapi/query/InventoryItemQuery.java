@@ -2,6 +2,7 @@ package net.botwithus.xapi.query;
 
 import com.botwithus.bot.api.GameAPI;
 import com.botwithus.bot.api.model.InventoryItem;
+import com.botwithus.bot.api.query.InventoryFilter;
 import net.botwithus.xapi.XApi;
 import net.botwithus.xapi.query.base.Query;
 import net.botwithus.xapi.query.result.ResultSet;
@@ -96,9 +97,9 @@ public class InventoryItemQuery implements Query<InventoryItem, ResultSet<Invent
     public ResultSet<InventoryItem> results() {
         List<InventoryItem> items = new ArrayList<>();
         for (int inventoryId : inventoryIds) {
-            items.addAll(api.queryInventoryItems(com.botwithus.bot.api.query.InventoryFilter.builder()
+            items.addAll(api.queryInventoryItems(InventoryFilter.builder()
                     .inventoryId(inventoryId)
-                    .nonEmpty(false)
+                    .nonEmpty(true)
                     .build()));
         }
         items.removeIf(filter.negate());

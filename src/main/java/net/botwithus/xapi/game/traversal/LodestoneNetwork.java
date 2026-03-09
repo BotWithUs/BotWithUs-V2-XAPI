@@ -1,7 +1,9 @@
 package net.botwithus.xapi.game.traversal;
 
 import com.botwithus.bot.api.GameAPI;
+import com.botwithus.bot.api.inventory.ActionTypes;
 import com.botwithus.bot.api.model.Component;
+import com.botwithus.bot.api.model.GameAction;
 import net.botwithus.xapi.XApi;
 import net.botwithus.xapi.game.traversal.enums.LodestoneType;
 import net.botwithus.xapi.query.ComponentQuery;
@@ -38,7 +40,7 @@ public final class LodestoneNetwork {
         if (component == null) {
             return false;
         }
-        api.queueAction(new com.botwithus.bot.api.model.GameAction(com.botwithus.bot.api.inventory.ActionTypes.COMPONENT, 1,
+        api.queueAction(new GameAction(ActionTypes.COMPONENT, 1,
                 component.subComponentId(), component.interfaceId() << 16 | component.componentId()));
         return true;
     }
@@ -55,7 +57,7 @@ public final class LodestoneNetwork {
         if (component == null) {
             return false;
         }
-        api.queueAction(new com.botwithus.bot.api.model.GameAction(com.botwithus.bot.api.inventory.ActionTypes.COMPONENT, 1,
+        api.queueAction(new GameAction(ActionTypes.COMPONENT, 1,
                 component.subComponentId(), component.interfaceId() << 16 | component.componentId()));
         script.delay(20);
         return true;
@@ -70,7 +72,7 @@ public final class LodestoneNetwork {
         if (component == null) {
             return false;
         }
-        api.queueAction(new com.botwithus.bot.api.model.GameAction(com.botwithus.bot.api.inventory.ActionTypes.COMPONENT, 1,
+        api.queueAction(new GameAction(ActionTypes.COMPONENT, 1,
                 component.subComponentId(), component.interfaceId() << 16 | component.componentId()));
         return true;
     }

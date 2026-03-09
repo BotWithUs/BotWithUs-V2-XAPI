@@ -1,15 +1,17 @@
 package net.botwithus.xapi.game.inventory;
 
 import com.botwithus.bot.api.GameAPI;
+import com.botwithus.bot.api.inventory.Equipment;
+import com.botwithus.bot.api.inventory.Equipment.Slot;
 import com.botwithus.bot.api.model.InventoryItem;
 import net.botwithus.xapi.XApi;
 
 import java.util.List;
 import java.util.regex.Pattern;
 
-public final class Equipment {
+public final class BwuEquipment {
 
-    private Equipment() {
+    private BwuEquipment() {
     }
 
     public static List<InventoryItem> getItems(GameAPI api) {
@@ -28,27 +30,27 @@ public final class Equipment {
         return contains(XApi.api(), itemId);
     }
 
-    public static InventoryItem getItem(GameAPI api, com.botwithus.bot.api.inventory.Equipment.Slot slot) {
+    public static InventoryItem getItem(GameAPI api, Slot slot) {
         return equipment(api).getSlot(slot);
     }
 
-    public static InventoryItem getItem(com.botwithus.bot.api.inventory.Equipment.Slot slot) {
+    public static InventoryItem getItem(Slot slot) {
         return getItem(XApi.api(), slot);
     }
 
-    public static boolean interact(GameAPI api, com.botwithus.bot.api.inventory.Equipment.Slot slot, int option) {
+    public static boolean interact(GameAPI api, Slot slot, int option) {
         return equipment(api).interact(slot, option);
     }
 
-    public static boolean interact(com.botwithus.bot.api.inventory.Equipment.Slot slot, int option) {
+    public static boolean interact(Slot slot, int option) {
         return interact(XApi.api(), slot, option);
     }
 
-    public static boolean interact(GameAPI api, com.botwithus.bot.api.inventory.Equipment.Slot slot, String option) {
+    public static boolean interact(GameAPI api, Slot slot, String option) {
         return equipment(api).interact(slot, option);
     }
 
-    public static boolean interact(com.botwithus.bot.api.inventory.Equipment.Slot slot, String option) {
+    public static boolean interact(Slot slot, String option) {
         return interact(XApi.api(), slot, option);
     }
 
@@ -61,9 +63,9 @@ public final class Equipment {
     }
 
     public static boolean equip(GameAPI api, int itemId) {
-        return Backpack.interact(api, itemId, "Wear")
-                || Backpack.interact(api, itemId, "Wield")
-                || Backpack.interact(api, itemId, "Equip");
+        return BwuBackpack.interact(api, itemId, "Wear")
+                || BwuBackpack.interact(api, itemId, "Wield")
+                || BwuBackpack.interact(api, itemId, "Equip");
     }
 
     public static boolean equip(int itemId) {
@@ -71,7 +73,7 @@ public final class Equipment {
     }
 
     public static boolean equip(GameAPI api, Pattern pattern) {
-        InventoryItem item = Backpack.getItems(api).stream()
+        InventoryItem item = BwuBackpack.getItems(api).stream()
                 .filter(candidate -> pattern.matcher(api.getItemType(candidate.itemId()).name()).matches())
                 .findFirst()
                 .orElse(null);
@@ -82,7 +84,7 @@ public final class Equipment {
         return equip(XApi.api(), pattern);
     }
 
-    private static com.botwithus.bot.api.inventory.Equipment equipment(GameAPI api) {
-        return new com.botwithus.bot.api.inventory.Equipment(api);
+    private static Equipment equipment(GameAPI api) {
+        return new Equipment(api);
     }
 }

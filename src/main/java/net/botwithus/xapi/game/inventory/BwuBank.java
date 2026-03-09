@@ -1,7 +1,11 @@
 package net.botwithus.xapi.game.inventory;
 
 import com.botwithus.bot.api.GameAPI;
+import com.botwithus.bot.api.inventory.ActionTypes;
+import com.botwithus.bot.api.inventory.Bank;
+import com.botwithus.bot.api.inventory.Bank.TransferAmount;
 import com.botwithus.bot.api.model.Component;
+import com.botwithus.bot.api.model.GameAction;
 import com.botwithus.bot.api.model.InventoryItem;
 import net.botwithus.xapi.XApi;
 import net.botwithus.xapi.query.ComponentQuery;
@@ -17,16 +21,16 @@ import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public final class Bank {
+public final class BwuBank {
 
-    public static final int INVENTORY_ID = com.botwithus.bot.api.inventory.Bank.INVENTORY_ID;
-    public static final int INTERFACE_INDEX = com.botwithus.bot.api.inventory.Bank.INTERFACE_ID;
-    public static final int COMPONENT_INDEX = com.botwithus.bot.api.inventory.Bank.BANK_COMPONENT;
+    public static final int INVENTORY_ID = Bank.INVENTORY_ID;
+    public static final int INTERFACE_INDEX = Bank.INTERFACE_ID;
+    public static final int COMPONENT_INDEX = Bank.BANK_COMPONENT;
 
     private static final Pattern BANK_NAME_PATTERN = Pattern.compile("^(?!.*deposit).*(bank|counter).*$", Pattern.CASE_INSENSITIVE);
     private static final String LAST_PRESET_OPTION = "Load Last Preset from";
 
-    private Bank() {
+    private BwuBank() {
     }
 
     public static boolean open(GameAPI api) {
@@ -52,7 +56,7 @@ public final class Bank {
     }
 
     public static boolean close(GameAPI api) {
-        api.queueAction(new com.botwithus.bot.api.model.GameAction(com.botwithus.bot.api.inventory.ActionTypes.COMPONENT, 1, -1, INTERFACE_INDEX << 16 | 11));
+        api.queueAction(new GameAction(ActionTypes.COMPONENT, 1, -1, INTERFACE_INDEX << 16 | 11));
         return true;
     }
 
@@ -256,7 +260,7 @@ public final class Bank {
                 .map(name -> firstIdByName(api, name))
                 .filter(id -> id > -1)
                 .collect(Collectors.toSet());
-        return ids.stream().allMatch(id -> bank(api).deposit(id, com.botwithus.bot.api.inventory.Bank.TransferAmount.ALL));
+        return ids.stream().allMatch(id -> bank(api).deposit(id, TransferAmount.ALL));
     }
 
     public static boolean depositAll(PermissiveScript script, String... itemNames) {
@@ -264,7 +268,7 @@ public final class Bank {
     }
 
     public static boolean depositAll(GameAPI api, PermissiveScript script, int... itemIds) {
-        return Arrays.stream(itemIds).allMatch(id -> bank(api).deposit(id, com.botwithus.bot.api.inventory.Bank.TransferAmount.ALL));
+        return Arrays.stream(itemIds).allMatch(id -> bank(api).deposit(id, TransferAmount.ALL));
     }
 
     public static boolean depositAll(PermissiveScript script, int... itemIds) {
@@ -272,14 +276,14 @@ public final class Bank {
     }
 
     public static boolean depositAll(GameAPI api, PermissiveScript script, Pattern... patterns) {
-        Set<Integer> ids = Backpack.getItems(api).stream()
+        Set<Integer> ids = BwuBackpack.getItems(api).stream()
                 .filter(item -> {
                     String name = api.getItemType(item.itemId()).name();
                     return Arrays.stream(patterns).anyMatch(pattern -> pattern.matcher(name).matches());
                 })
                 .map(InventoryItem::itemId)
                 .collect(Collectors.toSet());
-        return ids.stream().allMatch(id -> bank(api).deposit(id, com.botwithus.bot.api.inventory.Bank.TransferAmount.ALL));
+        return ids.stream().allMatch(id -> bank(api).deposit(id, TransferAmount.ALL));
     }
 
     public static boolean depositAll(PermissiveScript script, Pattern... patterns) {
@@ -288,11 +292,11 @@ public final class Bank {
 
     public static boolean depositAllExcept(GameAPI api, PermissiveScript script, String... itemNames) {
         Set<String> protectedNames = Arrays.stream(itemNames).collect(Collectors.toSet());
-        return Backpack.getItems(api).stream()
+        return BwuBackpack.getItems(api).stream()
                 .filter(item -> !protectedNames.contains(api.getItemType(item.itemId()).name()))
                 .map(InventoryItem::itemId)
                 .distinct()
-                .allMatch(id -> bank(api).deposit(id, com.botwithus.bot.api.inventory.Bank.TransferAmount.ALL));
+                .allMatch(id -> bank(api).deposit(id, TransferAmount.ALL));
     }
 
     public static boolean depositAllExcept(PermissiveScript script, String... itemNames) {
@@ -301,11 +305,11 @@ public final class Bank {
 
     public static boolean depositAllExcept(GameAPI api, PermissiveScript script, int... ids) {
         Set<Integer> protectedIds = Arrays.stream(ids).boxed().collect(Collectors.toSet());
-        return Backpack.getItems(api).stream()
+        return BwuBackpack.getItems(api).stream()
                 .filter(item -> !protectedIds.contains(item.itemId()))
                 .map(InventoryItem::itemId)
                 .distinct()
-                .allMatch(id -> bank(api).deposit(id, com.botwithus.bot.api.inventory.Bank.TransferAmount.ALL));
+                .allMatch(id -> bank(api).deposit(id, TransferAmount.ALL));
     }
 
     public static boolean depositAllExcept(PermissiveScript script, int... ids) {
@@ -313,14 +317,14 @@ public final class Bank {
     }
 
     public static boolean depositAllExcept(GameAPI api, PermissiveScript script, Pattern... patterns) {
-        return Backpack.getItems(api).stream()
+        return BwuBackpack.getItems(api).stream()
                 .filter(item -> {
                     String name = api.getItemType(item.itemId()).name();
                     return Arrays.stream(patterns).noneMatch(pattern -> pattern.matcher(name).matches());
                 })
                 .map(InventoryItem::itemId)
                 .distinct()
-                .allMatch(id -> bank(api).deposit(id, com.botwithus.bot.api.inventory.Bank.TransferAmount.ALL));
+                .allMatch(id -> bank(api).deposit(id, TransferAmount.ALL));
     }
 
     public static boolean depositAllExcept(PermissiveScript script, Pattern... patterns) {
@@ -336,7 +340,7 @@ public final class Bank {
     }
 
     public static boolean deposit(GameAPI api, PermissiveScript script, String name, BiFunction<String, CharSequence, Boolean> matcher, int option) {
-        Integer itemId = Backpack.getItems(api).stream()
+        Integer itemId = BwuBackpack.getItems(api).stream()
                 .filter(item -> Boolean.TRUE.equals(matcher.apply(api.getItemType(item.itemId()).name(), name)))
                 .map(InventoryItem::itemId)
                 .findFirst()
@@ -370,11 +374,11 @@ public final class Bank {
 
     public static boolean setTransferOption(GameAPI api, TransferOptionType transferOptionType) {
         return bank(api).setTransferMode(switch (transferOptionType) {
-            case ONE -> com.botwithus.bot.api.inventory.Bank.TransferAmount.ONE;
-            case FIVE -> com.botwithus.bot.api.inventory.Bank.TransferAmount.FIVE;
-            case TEN -> com.botwithus.bot.api.inventory.Bank.TransferAmount.TEN;
-            case ALL -> com.botwithus.bot.api.inventory.Bank.TransferAmount.ALL;
-            case X -> com.botwithus.bot.api.inventory.Bank.TransferAmount.CUSTOM;
+            case ONE -> TransferAmount.ONE;
+            case FIVE -> TransferAmount.FIVE;
+            case TEN -> TransferAmount.TEN;
+            case ALL -> TransferAmount.ALL;
+            case X -> TransferAmount.CUSTOM;
         });
     }
 
@@ -382,8 +386,8 @@ public final class Bank {
         return setTransferOption(XApi.api(), transferOptionType);
     }
 
-    private static com.botwithus.bot.api.inventory.Bank bank(GameAPI api) {
-        return new com.botwithus.bot.api.inventory.Bank(api);
+    private static Bank bank(GameAPI api) {
+        return new Bank(api);
     }
 
     private static int firstIdByName(GameAPI api, String name) {
@@ -391,21 +395,13 @@ public final class Bank {
         return item == null ? -1 : item.itemId();
     }
 
-    private static com.botwithus.bot.api.inventory.Bank.TransferAmount mapOption(int option) {
+    private static TransferAmount mapOption(int option) {
         return switch (option) {
-            case 2 -> com.botwithus.bot.api.inventory.Bank.TransferAmount.ONE;
-            case 3 -> com.botwithus.bot.api.inventory.Bank.TransferAmount.FIVE;
-            case 4 -> com.botwithus.bot.api.inventory.Bank.TransferAmount.TEN;
-            case 5 -> com.botwithus.bot.api.inventory.Bank.TransferAmount.CUSTOM;
-            default -> com.botwithus.bot.api.inventory.Bank.TransferAmount.ALL;
+            case 2 -> TransferAmount.ONE;
+            case 3 -> TransferAmount.FIVE;
+            case 4 -> TransferAmount.TEN;
+            case 5 -> TransferAmount.CUSTOM;
+            default -> TransferAmount.ALL;
         };
     }
-}
-
-enum TransferOptionType {
-    ONE,
-    FIVE,
-    TEN,
-    ALL,
-    X
 }

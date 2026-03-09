@@ -68,11 +68,6 @@ public class GroundItemQuery implements Query<GroundItems.Entry, ResultSet<Groun
         return this;
     }
 
-    public GroundItemQuery valid(boolean valid) {
-        filter = filter.and(item -> valid);
-        return this;
-    }
-
     public GroundItemQuery and(GroundItemQuery other) {
         filter = filter.and(other.filter);
         return this;

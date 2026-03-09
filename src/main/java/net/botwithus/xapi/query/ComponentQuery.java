@@ -2,6 +2,7 @@ package net.botwithus.xapi.query;
 
 import com.botwithus.bot.api.GameAPI;
 import com.botwithus.bot.api.model.Component;
+import com.botwithus.bot.api.query.ComponentFilter;
 import net.botwithus.xapi.XApi;
 import net.botwithus.xapi.query.base.Query;
 import net.botwithus.xapi.query.result.ResultSet;
@@ -44,10 +45,6 @@ public class ComponentQuery implements Query<Component, ResultSet<Component>> {
 
     public ComponentQuery type(int... types) {
         filter = filter.and(component -> contains(types, component.type()));
-        return this;
-    }
-
-    public ComponentQuery hidden(boolean hidden) {
         return this;
     }
 
@@ -113,7 +110,7 @@ public class ComponentQuery implements Query<Component, ResultSet<Component>> {
     public ResultSet<Component> results() {
         List<Component> results = new ArrayList<>();
         for (int interfaceId : interfaceIds) {
-            results.addAll(api.queryComponents(com.botwithus.bot.api.query.ComponentFilter.builder()
+            results.addAll(api.queryComponents(ComponentFilter.builder()
                     .interfaceId(interfaceId)
                     .maxResults(500)
                     .build()));

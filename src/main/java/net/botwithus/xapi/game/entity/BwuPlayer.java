@@ -22,22 +22,22 @@ public final class BwuPlayer {
         return getBossKills(XApi.api());
     }
 
-    public static boolean isTargetting(GameAPI api, String... npcName) {
+    public static boolean isTargeting(GameAPI api, String... npcName) {
         LocalPlayer player = api.getLocalPlayer();
         return player != null && Arrays.stream(npcName).anyMatch(name -> name.equalsIgnoreCase(player.overheadText()));
     }
 
-    public static boolean isTargetting(String... npcName) {
-        return isTargetting(XApi.api(), npcName);
+    public static boolean isTargeting(String... npcName) {
+        return isTargeting(XApi.api(), npcName);
     }
 
-    public static boolean isTargettingNameContaining(GameAPI api, String partial) {
+    public static boolean isTargetingNameContaining(GameAPI api, String partial) {
         LocalPlayer player = api.getLocalPlayer();
         return player != null && player.overheadText() != null && player.overheadText().toLowerCase().contains(partial.toLowerCase());
     }
 
-    public static boolean isTargettingNameContaining(String partial) {
-        return isTargettingNameContaining(XApi.api(), partial);
+    public static boolean isTargetingNameContaining(String partial) {
+        return isTargetingNameContaining(XApi.api(), partial);
     }
 
     public static boolean isInAnimation(HashSet<Integer> animations) {
@@ -51,32 +51,6 @@ public final class BwuPlayer {
 
     public static boolean isCurrentAnimation(HashSet<Integer> animations) {
         return isCurrentAnimation(XApi.api(), animations);
-    }
-
-    public static boolean isInAnimation(GameAPI api, HashSet<Integer> animations, int timeout) {
-        return isCurrentAnimation(api, animations);
-    }
-
-    public static boolean isInAnimation(HashSet<Integer> animations, int timeout) {
-        return isInAnimation(XApi.api(), animations, timeout);
-    }
-
-    public static boolean isInAnimation(GameAPI api, int[] animationIds, int timeout) {
-        LocalPlayer player = api.getLocalPlayer();
-        return player != null && Arrays.stream(animationIds).anyMatch(id -> id == player.animationId());
-    }
-
-    public static boolean isInAnimation(int[] animationIds, int timeout) {
-        return isInAnimation(XApi.api(), animationIds, timeout);
-    }
-
-    public static boolean isAnimating(GameAPI api, int timeout) {
-        LocalPlayer player = api.getLocalPlayer();
-        return player != null && player.animationId() != -1;
-    }
-
-    public static boolean isAnimating(int timeout) {
-        return isAnimating(XApi.api(), timeout);
     }
 
     public static boolean isInInstance(GameAPI api) {

@@ -4,6 +4,8 @@ import com.botwithus.bot.api.GameAPI;
 import com.botwithus.bot.api.ScriptContext;
 import com.botwithus.bot.api.model.InventoryItem;
 import com.botwithus.bot.api.model.LocalPlayer;
+import com.botwithus.bot.api.query.InventoryFilter;
+import net.botwithus.xapi.game.inventory.BwuBackpack;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
@@ -101,8 +103,8 @@ public abstract class BwuScript extends PermissiveScript {
     private void pollInventoryEvents() {
         Map<Integer, InventoryItem> current = new HashMap<>();
         for (InventoryItem item : gameApi().queryInventoryItems(
-                com.botwithus.bot.api.query.InventoryFilter.builder()
-                        .inventoryId(net.botwithus.xapi.game.inventory.Backpack.INVENTORY_ID)
+                InventoryFilter.builder()
+                        .inventoryId(BwuBackpack.INVENTORY_ID)
                         .nonEmpty(false)
                         .build())) {
             current.put(item.slot(), item);

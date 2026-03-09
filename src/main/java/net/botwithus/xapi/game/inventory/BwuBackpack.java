@@ -2,9 +2,11 @@ package net.botwithus.xapi.game.inventory;
 
 import com.botwithus.bot.api.GameAPI;
 import com.botwithus.bot.api.inventory.ActionTypes;
+import com.botwithus.bot.api.inventory.Backpack;
 import com.botwithus.bot.api.model.Component;
 import com.botwithus.bot.api.model.GameAction;
 import com.botwithus.bot.api.model.InventoryItem;
+import com.botwithus.bot.api.query.ComponentFilter;
 import net.botwithus.xapi.XApi;
 
 import java.util.Arrays;
@@ -13,13 +15,13 @@ import java.util.Objects;
 import java.util.function.BiFunction;
 import java.util.regex.Pattern;
 
-public final class Backpack {
+public final class BwuBackpack {
 
-    public static final int INVENTORY_ID = com.botwithus.bot.api.inventory.Backpack.INVENTORY_ID;
-    public static final int INTERFACE_ID = com.botwithus.bot.api.inventory.Backpack.INTERFACE_ID;
-    public static final int COMPONENT_ID = com.botwithus.bot.api.inventory.Backpack.COMPONENT_ID;
+    public static final int INVENTORY_ID = Backpack.INVENTORY_ID;
+    public static final int INTERFACE_ID = Backpack.INTERFACE_ID;
+    public static final int COMPONENT_ID = Backpack.COMPONENT_ID;
 
-    private Backpack() {
+    private BwuBackpack() {
     }
 
     public static boolean isFull(GameAPI api) {
@@ -161,12 +163,12 @@ public final class Backpack {
         return dragComponent(XApi.api(), fromComponent, toComponent);
     }
 
-    private static com.botwithus.bot.api.inventory.Backpack container(GameAPI api) {
-        return new com.botwithus.bot.api.inventory.Backpack(api);
+    private static Backpack container(GameAPI api) {
+        return new Backpack(api);
     }
 
     private static Component findComponentByItem(GameAPI api, int itemId) {
-        List<Component> components = api.queryComponents(com.botwithus.bot.api.query.ComponentFilter.builder()
+        List<Component> components = api.queryComponents(ComponentFilter.builder()
                 .interfaceId(INTERFACE_ID)
                 .itemId(itemId)
                 .build());

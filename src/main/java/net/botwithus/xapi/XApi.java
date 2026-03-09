@@ -90,4 +90,12 @@ public final class XApi {
             return null;
         });
     }
+
+    public static com.botwithus.bot.api.event.EventBus events() {
+        return context().getEventBus();
+    }
+
+    public static com.botwithus.bot.api.isc.MessageBus messageBus() {
+        return context().getMessageBus();
+    }
 }
