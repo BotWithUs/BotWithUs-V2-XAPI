@@ -5,7 +5,7 @@ plugins {
 
 java {
     toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
+        languageVersion.set(JavaLanguageVersion.of(25))
     }
 }
 
@@ -21,11 +21,12 @@ group = "net.botwithus.xapi"
 version = "2.0.0-SNAPSHOT"
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
 dependencies {
-    implementation(files("../BWUJavaScriptingFramework/api/build/libs/api-1.0-SNAPSHOT.jar"))
+    implementation("com.botwithus:api:1.0-SNAPSHOT")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("org.slf4j:slf4j-api:2.0.9")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
@@ -38,12 +39,6 @@ tasks.test {
 }
 
 publishing {
-    repositories {
-        maven {
-            url = layout.buildDirectory.dir("repo").get().asFile.toURI()
-        }
-    }
-
     publications {
         create<MavenPublication>("mavenJava") {
             from(components["java"])
@@ -51,12 +46,15 @@ publishing {
             pom {
                 name.set("BotWithUs XAPI")
                 description.set("Extended API framework for BotWithUs RuneScape 3 bot development")
-                
+
                 properties.set(mapOf(
-                    "maven.compiler.source" to "21",
-                    "maven.compiler.target" to "21"
+                    "maven.compiler.source" to "25",
+                    "maven.compiler.target" to "25"
                 ))
             }
         }
+    }
+    repositories {
+        mavenLocal()
     }
 }
