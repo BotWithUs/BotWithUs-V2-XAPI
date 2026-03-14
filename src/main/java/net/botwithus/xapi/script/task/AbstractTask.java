@@ -1,11 +1,9 @@
 package net.botwithus.xapi.script.task;
 
 import com.google.gson.JsonObject;
-import lombok.Getter;
 
 public abstract class AbstractTask<T extends SerializableTarget> implements Task {
 
-    @Getter
     private final T target; // Generic target, like Hotspot, Tree, Rock, etc.
 
     private int currentCount;
@@ -26,6 +24,10 @@ public abstract class AbstractTask<T extends SerializableTarget> implements Task
         this.currentCount = currentCount;
         this.completeCount = completeCount;
         this.isComplete = false;
+    }
+
+    public T getTarget() {
+        return target;
     }
 
     @Override

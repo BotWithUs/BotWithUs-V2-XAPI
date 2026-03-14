@@ -1,155 +1,137 @@
 package net.botwithus.xapi.game.entity;
 
-import net.botwithus.rs3.cache.assets.vars.VarDomainType;
-import net.botwithus.rs3.entities.PathingEntity;
-import net.botwithus.rs3.entities.LocalPlayer;
-import net.botwithus.rs3.entities.EntityType;
-import net.botwithus.rs3.world.World;
-import net.botwithus.rs3.client.Client;
-// Dialog API usage temporarily commented out for compilation
-// import net.botwithus.rs3.game.hud.Dialog;
-import net.botwithus.rs3.vars.VarDomain;
-import net.botwithus.rs3.world.Locatable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import net.botwithus.rs3.world.Distance;
+import com.botwithus.bot.api.GameAPI;
+import com.botwithus.bot.api.model.LocalPlayer;
+import net.botwithus.xapi.XApi;
 import net.botwithus.xapi.util.BwuDistance;
+import net.botwithus.xapi.util.position.Positionable;
+
 import java.util.Arrays;
 import java.util.HashSet;
 
-public class BwuPlayer {
+public final class BwuPlayer {
 
-    private static final Logger logger = LoggerFactory.getLogger(BwuPlayer.class);
+    private BwuPlayer() {
+    }
 
-    /**
-     * Helper method to get the current target using v2 API
-     */
-    private static PathingEntity getTarget(LocalPlayer player) {
-        if (player == null) return null;
-
-        EntityType targetType = player.getTargetType();
-        int targetIndex = player.getTargetServerIndex();
-
-        if (targetIndex <= 0) return null;
-
-        if (targetType == EntityType.NPC_ENTITY) {
-            return World.getNpc(targetIndex);
-        } else if (targetType == EntityType.PLAYER_ENTITY) {
-            return World.getPlayer(targetIndex);
-        }
-
-        return null;
+    public static int getBossKills(GameAPI api) {
+        return api.getVarp(6437);
     }
 
     public static int getBossKills() {
-        return VarDomain.getVarValue(6437);
+        return getBossKills(XApi.api());
     }
 
-    public static boolean isTargetting(PathingEntity npc) {
-        var local = LocalPlayer.self();
-        if (local == null)
-            return false;
-        var target = getTarget(local);
-        return target != null && target.equals(npc); // && !Dialog.isOpen();
+    public static boolean isTargeting(GameAPI api, String... npcName) {
+        LocalPlayer player = api.getLocalPlayer();
+        return player != null && Arrays.stream(npcName).anyMatch(name -> name.equalsIgnoreCase(player.overheadText()));
     }
 
-    public static boolean isTargetting(String... npcName) {
-        var local = LocalPlayer.self();
-        if (local == null) return false;
-
-        PathingEntity target = getTarget(local);
-        if (target == null) return false;
-
-        String targetName = target.getName();
-        return targetName != null && Arrays.asList(npcName).contains(targetName); // && !Dialog.isOpen();
+    public static boolean isTargeting(String... npcName) {
+        return isTargeting(XApi.api(), npcName);
     }
 
-    public static boolean isTargettingNameContaining(String partial) {
-        partial = partial.toLowerCase();
-        var local = LocalPlayer.self();
-        if (local == null) return false;
-
-        PathingEntity target = getTarget(local);
-        if (target == null) return false;
-
-        String targetName = target.getName();
-        return targetName != null && targetName.toLowerCase().contains(partial); // && !Dialog.isOpen();
+    public static boolean isTargetingNameContaining(GameAPI api, String partial) {
+        LocalPlayer player = api.getLocalPlayer();
+        return player != null && player.overheadText() != null && player.overheadText().toLowerCase().contains(partial.toLowerCase());
     }
 
-    public static boolean isInAnimation(HashSet<Integer> animations){
-        return isInAnimation(animations, 2000);
+    public static boolean isTargetingNameContaining(String partial) {
+        return isTargetingNameContaining(XApi.api(), partial);
+    }
+
+    public static boolean isInAnimation(HashSet<Integer> animations) {
+        return isCurrentAnimation(XApi.api(), animations);
+    }
+
+    public static boolean isCurrentAnimation(GameAPI api, HashSet<Integer> animations) {
+        LocalPlayer player = api.getLocalPlayer();
+        return player != null && animations.contains(player.animationId());
     }
 
     public static boolean isCurrentAnimation(HashSet<Integer> animations) {
-        var local = LocalPlayer.self();
-        return local != null && animations.contains(local.getAnimationId()); // && !Dialog.isOpen();
+        return isCurrentAnimation(XApi.api(), animations);
     }
 
-    public static boolean isInAnimation(HashSet<Integer> animations, int timeout) {
-        // TODO: Implement delayUntil equivalent for v2 API
-        var player = LocalPlayer.self();
-        return player != null && animations.contains(player.getAnimationId()); // && !Dialog.isOpen();
-    }
-
-    public static boolean isInAnimation(int[] animationIds, int timeout) {
-        // TODO: Implement delayUntil equivalent for v2 API
-        var player = LocalPlayer.self();
-        return player != null && Arrays.stream(animationIds).anyMatch(i -> i == player.getAnimationId()); // && !Dialog.isOpen();
-    }
-
-    public static boolean isAnimating(int timeout) {
-        // TODO: Implement delayUntil equivalent for v2 API
-        var player = LocalPlayer.self();
-        return player != null && player.getAnimationId() != -1; // && !Dialog.isOpen();
+    public static boolean isInInstance(GameAPI api) {
+        LocalPlayer player = api.getLocalPlayer();
+        return player != null && (player.tileX() > 6400 || player.tileY() > 12800);
     }
 
     public static boolean isInInstance() {
-        try {
-            var player = LocalPlayer.self();
-            if (player == null) {
-                return false;
-            }
-            var pCoord = player.getCoordinate();
-            return pCoord.x() > 6400 || pCoord.y() > 12800;
-        } catch (Exception e) {
-            logger.info("Error checking if player is in instance: " + e.getMessage());
-            return false;
-        }
+        return isInInstance(XApi.api());
     }
 
-    /**
-     * @return the player's current health percentage 0-100
-     */
-    public static float getHealthPercent() {
-        var player = LocalPlayer.self();
-        if (player == null) {
+    public static float getHealthPercent(GameAPI api) {
+        LocalPlayer player = api.getLocalPlayer();
+        if (player == null || player.maxHealth() <= 0) {
             return 0;
         }
-        return ((float) player.getHealth() / (float) player.getMaxHealth()) * 100;
+        return ((float) player.health() / player.maxHealth()) * 100f;
     }
 
+    public static float getHealthPercent() {
+        return getHealthPercent(XApi.api());
+    }
+
+    public static boolean isPvpEnabled(GameAPI api) {
+        return api.getVarbit(52975) == 1;
+    }
 
     public static boolean isPvpEnabled() {
-        return VarDomain.getVarBitValue(52975) == 1;
+        return isPvpEnabled(XApi.api());
+    }
+
+    public static boolean isStunned(GameAPI api) {
+        return api.getVarcInt(3748) > 0;
     }
 
     public static boolean isStunned() {
-        return (VarDomain.getVarClient(3748) - Client.getClientCycle()) > 0;
+        return isStunned(XApi.api());
+    }
+
+    public static boolean isPoisoned(GameAPI api) {
+        return api.getVarcInt(4681) > 0;
     }
 
     public static boolean isPoisoned() {
-        return (VarDomain.getVarClient(4681) - Client.getClientCycle()) > 0;
+        return isPoisoned(XApi.api());
+    }
+
+    public static boolean isInCombat(GameAPI api) {
+        return api.getVarbit(1899) != 0;
     }
 
     public static boolean isInCombat() {
-        return VarDomain.getVarBitValue(1899) != 0;
+        return isInCombat(XApi.api());
     }
 
-    public static boolean isLocatableBetweenDestination(Locatable locatable, Locatable destination) {
-        var player = LocalPlayer.self();
+    public static boolean isLocatableBetweenDestination(GameAPI api, Positionable locatable, Positionable destination) {
+        LocalPlayer player = api.getLocalPlayer();
         if (player == null) {
             return false;
         }
-        return BwuDistance.isLocatableBetween(player, locatable, destination) && BwuDistance.isLocatableCloser(player, locatable, destination);
+        Positionable playerPosition = new Positionable() {
+            @Override
+            public int x() {
+                return player.tileX();
+            }
+
+            @Override
+            public int y() {
+                return player.tileY();
+            }
+
+            @Override
+            public int plane() {
+                return player.plane();
+            }
+        };
+        return BwuDistance.isLocatableBetween(playerPosition, locatable, destination)
+                && BwuDistance.isLocatableCloser(playerPosition, locatable, destination);
+    }
+
+    public static boolean isLocatableBetweenDestination(Positionable locatable, Positionable destination) {
+        return isLocatableBetweenDestination(XApi.api(), locatable, destination);
     }
 }

@@ -1,13 +1,9 @@
 package net.botwithus.xapi.util.time;
 
-import lombok.Getter;
-import lombok.Setter;
-import net.botwithus.util.Rand;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class Timer {
     private final Stopwatch stopWatch = new Stopwatch();
-    @Setter
-    @Getter
     private long minTime, maxTime;
     private boolean hasStarted = false, forceExpired = false;
     private long timerDuration;
@@ -15,7 +11,7 @@ public class Timer {
     public Timer(long min, long max) {
         minTime = min;
         maxTime = max;
-        timerDuration = Rand.nextLong(min, max);
+        timerDuration = nextDuration();
         forceExpired = false;
     }
 
@@ -54,7 +50,7 @@ public class Timer {
     public void reset() {
         forceExpired = false;
         hasStarted = true;
-        timerDuration = Rand.nextLong(minTime, maxTime);
+        timerDuration = nextDuration();
         stopWatch.start();
     }
 
@@ -76,6 +72,31 @@ public class Timer {
 
     public boolean hasStarted() {
         return hasStarted;
+    }
+
+    public long getMinTime() {
+        return minTime;
+    }
+
+    public void setMinTime(long minTime) {
+        this.minTime = minTime;
+    }
+
+    public long getMaxTime() {
+        return maxTime;
+    }
+
+    public void setMaxTime(long maxTime) {
+        this.maxTime = maxTime;
+    }
+
+    private long nextDuration() {
+        if (minTime == maxTime) {
+            return minTime;
+        }
+        long lower = Math.min(minTime, maxTime);
+        long upper = Math.max(minTime, maxTime);
+        return ThreadLocalRandom.current().nextLong(lower, upper + 1);
     }
 
     public static String secondsToFormattedString(long timeInSeconds, DurationStringFormat stringFormat) {
